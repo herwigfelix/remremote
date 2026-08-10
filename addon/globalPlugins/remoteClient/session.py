@@ -90,6 +90,10 @@ class SlaveSession(RemoteSession):
 		self.transport.callback_manager.register_callback(TransportEvents.CLOSING, self.handle_transport_closing)
 		self.patcher = nvda_patcher.NVDASlavePatcher()
 		self.patch_callbacks_added = False
+		#: While False, this machine's speech and sounds are NOT sent to the controlling
+		#: computer as remote messages. Set by AudioManager for the duration of an audio
+		#: stream that carries our own synthesizer, so nothing is heard twice.
+		self.speech_forwarding = True
 		self.transport.callback_manager.register_callback('msg_channel_joined', self.handle_channel_joined)
 		self.transport.callback_manager.register_callback('msg_set_clipboard_text', self.local_machine.set_clipboard_text)
 		self.transport.callback_manager.register_callback('msg_file_transfer', self.local_machine.file_transfer)
@@ -182,7 +186,24 @@ class SlaveSession(RemoteSession):
 			if not isinstance(item, EXCLUDED_SPEECH_COMMANDS)
 		])
 
+	def set_speech_forwarding(self, enabled):
+		"""Turn the forwarding of this machine's speech and sounds on or off.
+
+		Switched off while the controlling computer listens to our own synthesizer through
+		the audio stream: sending the same output as remote messages too would have it
+		spoken twice, by two different voices."""
+		if bool(enabled) == self.speech_forwarding:
+			return
+		if not enabled:
+			# Cut off whatever the controlling machine is still speaking from our last
+			# forwarded sequence — from here on it hears our own voice instead. Sent
+			# directly, because the gate below closes for cancel messages too.
+			self.transport.send(type="cancel")
+		self.speech_forwarding = bool(enabled)
+
 	def speak(self, speechSequence, priority):
+		if not self.speech_forwarding:
+			return
 		self.transport.send(
 			type="speak",
 			sequence=self._filterUnsupportedSpeechCommands(speechSequence),
@@ -190,16 +211,24 @@ class SlaveSession(RemoteSession):
 		)
 
 	def cancel_speech(self):
+		if not self.speech_forwarding:
+			return
 		self.transport.send(type="cancel")
 
 	def pause_speech(self, switch):
+		if not self.speech_forwarding:
+			return
 		self.transport.send(type="pause_speech", switch=switch)
 
 	def beep(self, hz, length, left=50, right=50, **kwargs):
+		if not self.speech_forwarding:
+			return
 		self.transport.send(type='tone', hz=hz, length=length, left=left, right=right, **kwargs)
 
 	def playWaveFile(self, **kwargs):
 		"""This machine played a sound, send it to Master machine"""
+		if not self.speech_forwarding:
+			return
 		kwargs.update({
 			# nvWave.playWaveFile should always be asynchronous when called from TeleNVDA, so always send 'True'
 			# Version 2.2 requires 'async' keyword.

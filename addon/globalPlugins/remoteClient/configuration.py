@@ -28,6 +28,13 @@ configspec = StringIO("""
 [trusted_certs]
 	__many__ = string(default="")
 
+[audio]
+	runtime_prompt_dismissed = boolean(default=False)
+	use_remote_tts = boolean(default=False)
+
+[firewall]
+	prompt_shown = boolean(default=False)
+
 [ui]
 	play_sounds = boolean(default=True)
 	alert_before_slave_disconnect = boolean(default=True)

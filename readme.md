@@ -1,10 +1,90 @@
-[[!meta title="TeleNVDA"]]
+[[!meta title="remremote"]]
+
+# remremote
+
+remremote is an NVDA add-on for remote assistance: connect to another computer running
+the free NVDA screen reader, or let a trusted person connect to yours — and, unlike the
+add-ons it is built on, **hear that computer's audio while you do it**.
+
+It is a fork of [TeleNVDA](https://github.com/nvda-es/TeleNVDA), which is itself a fork of
+[NVDA Remote](https://github.com/nvdaremote/nvdaremote) ([nvdaremote.com](https://nvdaremote.com)).
+The audio streaming is built on [RemSound](https://github.com/Ednunp/RemSound), which ships
+inside the add-on as a small helper process. All three originals are the work of other
+people; see [Credits and licence](#credits-and-licence).
+
+## What remremote adds
+
+* **Remote audio streaming** (control+shift+NVDA+a from the controlling computer). The
+  controlled computer's system sound is streamed as Opus over UDP, encrypted with
+  AES-256-GCM. NVDA's own process tree is excluded from the capture, so its speech is not
+  heard twice.
+* **Use the remote computer's speech synthesizer** (control+shift+NVDA+s, or an option in
+  the add-on settings). While audio is streaming, the controlled machine stops forwarding
+  its speech as text and you hear its own voice instead — useful when the two computers
+  speak different languages.
+* **Keep clipboards in sync** (control+shift+NVDA+k, or the Remote menu). Copy text on
+  either machine and it is available on the other. Either side can toggle it. Text only.
+* **One port to forward.** The audio stream uses the same port number as the control
+  server, UDP instead of TCP, and UPnP opens both.
+* **Guided setup for the awkward parts**: an offer to add the Windows Firewall rules the
+  control server needs, and automatic installation of the .NET runtime the audio helper
+  requires.
+* Fixes for the add-on being unreachable inside UAC prompts and other secure desktops.
+
+See [changelog.md](changelog.md) for the full list.
+
+## Requirements
+
+* Windows, and NVDA 2019.3 or newer, on both computers.
+* For audio streaming only: the .NET 10 Desktop Runtime on both computers. The add-on
+  offers to install it for you when it is missing.
+* Process-level exclusion of NVDA's own audio needs Windows 10 build 19041 or newer. On
+  older versions the whole default output device is captured instead, and the add-on
+  warns you.
+
+## Known issues and limitations
+
+* **There is no official release yet.** The builds published here are development builds.
+  An official release will follow only after the macOS app is finished — not before.
+* Audio streaming works over direct connections only. Sessions running through a relay
+  server report `relay_unsupported`; use a control server hosted on one of the two
+  machines.
+* IPv4 only for the audio stream. The control connection is unaffected.
+* Rebuilding the bundled audio helper (`RemSound.Host.exe`) needs the RemSound sources,
+  which live in [their own repository](https://github.com/Ednunp/RemSound) and are not
+  part of this one. The compiled helper is committed under
+  `addon/globalPlugins/remoteClient/audioHost/`, so building the add-on itself does not
+  require it.
+* If a control server is running but no session is connected, the copy of NVDA on a
+  secure desktop cannot take over the port and stays unreachable for the duration of that
+  dialog.
+
+## Building
+
+Requires Python, [SCons](https://scons.org/), Markdown and gettext:
+
+```
+pip install scons markdown
+scons
+```
+
+This produces `remremote-<version>.nvda-addon` in the repository root.
+
+## Credits and licence
+
+remremote is licensed under the GNU General Public License version 2, the same licence as
+the projects it builds on.
+
+* [NVDA Remote](https://github.com/nvdaremote/nvdaremote) — Tyler Spivey and Christopher Toth
+* [TeleNVDA](https://github.com/nvda-es/TeleNVDA) — Asociación Comunidad Hispanohablante de NVDA
+* [RemSound](https://github.com/Ednunp/RemSound) — the audio streaming engine
+
+---
+
+The rest of this document is the TeleNVDA manual, which applies to remremote as well.
 
 * Authors: Asociación Comunidad Hispanohablante de NVDA and other contributors. Original work by Tyler Spivey and Christopher Toth
 * NVDA Compatibility: 2019.3 and beyond
-* Download [stable version][1]
-
-Note: in order to make download easier for users who need assistance or training and have limited computing skills, we provide an alternate link to the latest stable version which is easy to remember and share. You can go to [nvda.es/tele](https://nvda.es/tele) and download the add-on directly, without intermediate web pages.
 
 Welcome to the TeleNVDA addon, which will allow you to connect to another computer running the free NVDA screen reader. With this add-on, you can connect to another person's computer, or allow a trusted person to connect to your system to perform routine maintenance, diagnose a problem, or provide training. This add-on is a modified version of the [NVDA Remote add-on](https://nvdaremote.com), and is maintained by the NVDA spanish community. It's fully compatible with NVDA Remote. These are the current differences:
 
@@ -207,6 +287,4 @@ In order to build the URL handler executable, you need Visual Studio 2019 or lat
 
 [[!tag dev stable]]
 
-[1]: https://www.nvaccess.org/addonStore/legacy?file=TeleNVDA
-
-[2]: https://github.com/nvda-es/TeleNVDA
+[2]: https://github.com/herwigfelix/remremote

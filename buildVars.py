@@ -6,19 +6,19 @@ from site_scons.site_tools.NVDATool.utils import _
 # Add-on information variables
 addon_info = AddonInfo(
 	# add-on Name, internal for nvda
-	addon_name= "TeleNVDA",
+	addon_name= "remremote",
 	# Add-on summary, usually the user visible name of the addon.
 	# Translators: Summary for this add-on to be shown on installation and add-on information.
-	addon_summary= _("Tele NVDA remote assistance"),
+	addon_summary= _("remremote remote assistance"),
 	# Add-on description
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
-	addon_description= _("""Allows remote control of and remote access to another machine. This add-on is based on NVDA Remote."""),
+	addon_description= _("""Allows remote control of and remote access to another machine, including streaming the remote computer's audio. remremote is a fork of TeleNVDA, which itself is based on NVDA Remote."""),
 	# version
-	addon_version= "2026.7.19",
+	addon_version= "2026.8.9",
 	# Author(s)
 	addon_author= "Asociación Comunidad Hispanohablante de NVDA <contacto@nvda.es> and other contributors. Original work by Tyler Spivey <tspivey@pcdesk.net>, Christopher Toth <q@q-continuum.net>",
 	# URL for the add-on documentation support
-	addon_url= "https://github.com/nvda-es/TeleNVDA",
+	addon_url= "https://github.com/herwigfelix/remremote",
 	# Documentation file name
 	addon_docFileName= "readme.html",
 	# Minimum NVDA version supported (e.g. "2018.3.0", minor version is optional)
@@ -32,10 +32,10 @@ addon_info = AddonInfo(
 	# URL for the license document the ad-on is licensed under
 	addon_licenseURL= "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
 	# URL for the add-on repository where the source code can be found
-	addon_sourceURL= "https://github.com/nvda-es/TeleNVDA",
+	addon_sourceURL= "https://github.com/herwigfelix/remremote",
 	# Brief changelog for this version
 	# Translators: what's new content for the add-on version to be shown in the add-on store
-	addon_changelog=_("""Handle server connections which break when client sends ALPN information. This should restore connectivity to nvdaremote.com and similar servers."""),
+	addon_changelog=_("""First remremote release: stream the remote computer's audio from either end (control+shift+NVDA+a), optionally hearing that computer's own speech synthesizer instead of its text speech (control+shift+NVDA+s), keep both clipboards in sync (control+shift+NVDA+k), UPnP port forwarding for both TCP and UDP with a confirmation prompt, and guided installation of the .NET 10 Desktop Runtime when it is missing. Also fixes the add-on staying unreachable inside UAC prompts and other secure desktops."""),
 )
 
 import os.path

@@ -41,7 +41,9 @@ from winUser import WM_QUIT
 
 logger = logging.getLogger(__name__)
 
+from . import audio
 from . import bridge
+from . import clipboard_sync
 from . import configuration
 from . import cues
 from . import dialogs
@@ -71,15 +73,20 @@ client = None
 
 class GlobalPlugin(_GlobalPlugin):
 	# Translators: script category for add-on gestures
-	scriptCategory = _("TeleNVDA")
+	scriptCategory = _("remremote")
 
 	def __init__(self, *args, **kwargs):
 		global client
 		super().__init__(*args, **kwargs)
-		for addon in addonHandler.getAvailableAddons(): 
-			if addon.name == "remote" and not addon.isDisabled:
-				raise RuntimeError("TeleNVDA cannot be used while NVDA Remote is running. Please, disable NVDA Remote and restart NVDA.")
+		# remremote is a renamed fork of TeleNVDA, which in turn forked NVDA Remote — all
+		# three patch the same NVDA internals and fight over the same sockets, so refuse to
+		# run alongside either of them.
+		for addon in addonHandler.getAvailableAddons():
+			if addon.name in ("remote", "TeleNVDA") and not addon.isDisabled:
+				raise RuntimeError("remremote cannot be used while NVDA Remote or TeleNVDA is running. Please, disable that add-on and restart NVDA.")
 		self.local_machine = local_machine.LocalMachine()
+		self.audio = audio.AudioManager(self)
+		self.clipboard_sync = clipboard_sync.ClipboardSync(self)
 		self.slave_session = None
 		self.master_session = None
 		self.create_menu()
@@ -111,6 +118,9 @@ class GlobalPlugin(_GlobalPlugin):
 			self.temp_location = os.path.join(shlobj.SHGetFolderPath(0, shlobj.CSIDL_COMMON_APPDATA), 'temp')
 		self.ipc_file = os.path.join(self.temp_location, 'remote.ipc')
 		self.sd_focused = False
+		# True while this copy of NVDA is only bridged into a session owned by the user
+		# session, as opposed to owning a connection of its own (sign-in screen).
+		self.sd_handover = False
 		if post_secureDesktopStateChange:
 			post_secureDesktopStateChange.register(self.onSecureDesktopChange)
 		if hasattr(globalVars, 'teleNVDA'):
@@ -121,10 +131,18 @@ class GlobalPlugin(_GlobalPlugin):
 
 	def postStartupHandler(self):
 		cs = configuration.get_config()['controlserver']
-		if globalVars.appArgs.secure:
-			self.handle_secure_desktop()
+		if globalVars.appArgs.secure and self.handle_secure_desktop():
+			# We joined the bridge that the copy of NVDA in the user session set up for
+			# us, so this desktop is already part of the running session. Autoconnecting
+			# on top of that would be harmful: with a self-hosted server it would fight
+			# the user session for the port, and otherwise it would join the remote
+			# session a second time as an independent client.
+			return
+		# Falling through is deliberate: on the sign-in screen there is no user session to
+		# hand over from, so autoconnect is the only way in.
 		if cs['autoconnect'] and not self.master_session and not self.slave_session:
 			wx.CallLater(50,self.perform_autoconnect)
+		self.audio.check_runtime_at_startup()
 
 	def perform_autoconnect(self):
 		cs = configuration.get_config()['controlserver']
@@ -134,7 +152,8 @@ class GlobalPlugin(_GlobalPlugin):
 			port = cs['port']
 			address = ('localhost',port)
 			UPNP = cs['UPNP']
-			self.start_control_server(port, channel, UPNP)
+			if not self.start_control_server(port, channel, UPNP):
+				return
 		else:
 			address = address_to_hostport(cs['host'])
 		if cs['connection_type']==0:
@@ -156,10 +175,18 @@ class GlobalPlugin(_GlobalPlugin):
 		self.mute_item = self.menu.Append(wx.ID_ANY, _("Mute remote"), _("Mute speech and sounds from the remote computer"))
 		self.mute_item.Enable(False)
 		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.on_mute_item, self.mute_item)
+		# Translators: Checkable menu item in remremote submenu to stream the remote computer's audio.
+		self.audio_item = self.menu.Append(wx.ID_ANY, _("Stream remote &audio"), _("Play the audio of the remote computer on this computer"), kind=wx.ITEM_CHECK)
+		self.audio_item.Enable(False)
+		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.on_audio_item, self.audio_item)
 		# Translators: Menu item in TeleNVDA submenu to push clipboard content to the remote computer.
 		self.push_clipboard_item = self.menu.Append(wx.ID_ANY, _("&Push clipboard"), _("Push the clipboard to the other machine"))
 		self.push_clipboard_item.Enable(False)
 		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.on_push_clipboard_item, self.push_clipboard_item)
+		# Translators: Checkable menu item in remremote submenu to keep both clipboards synchronised.
+		self.clipboard_sync_item = self.menu.Append(wx.ID_ANY, _("&Keep clipboard in sync"), _("Automatically keep the clipboards of both computers identical (text only)"), kind=wx.ITEM_CHECK)
+		self.clipboard_sync_item.Enable(False)
+		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.on_clipboard_sync_item, self.clipboard_sync_item)
 		# Translators: Menu item in TeleNVDA submenu to send a file to the remote computer.
 		self.send_file_item = self.menu.Append(wx.ID_ANY, _("Send &file..."), _("Send a file to the other machine"))
 		self.send_file_item.Enable(False)
@@ -182,15 +209,23 @@ class GlobalPlugin(_GlobalPlugin):
 		self.send_ctrl_alt_del_item = self.menu.Append(wx.ID_ANY, _("Send Ctrl+Alt+Del"), _("Send Ctrl+Alt+Del"))
 		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.on_send_ctrl_alt_del, self.send_ctrl_alt_del_item)
 		self.send_ctrl_alt_del_item.Enable(False)
+		# Translators: Menu item in remremote submenu to create Windows Firewall rules for the control server hosted on this computer.
+		self.firewall_item = self.menu.Append(wx.ID_ANY, _("Create firewall &rules for the control server (User Account Control may be required)"), _("Allow incoming connections to the control server hosted on this computer through the Windows Firewall"))
+		# Only meaningful while we actually host a server — inbound rules are pointless
+		# otherwise, and the rules are scoped to the running server's port.
+		self.firewall_item.Enable(False)
+		gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, self.on_firewall_item, self.firewall_item)
 
 		# Translators: Label of menu in NVDA tools menu.
-		self.remote_item=tools_menu.AppendSubMenu(self.menu, _("R&emote"), _("TeleNVDA"))
+		self.remote_item=tools_menu.AppendSubMenu(self.menu, _("R&emote"), _("remremote"))
 
 	def terminate(self):
 		global client
 		if post_secureDesktopStateChange:
 			post_secureDesktopStateChange.unregister(self.onSecureDesktopChange)
 		self.disconnect()
+		self.audio.shutdown()
+		self.clipboard_sync.shutdown()
 		self.local_machine.terminate()
 		self.local_machine = None
 		NVDASettingsDialog.categoryClasses.remove(dialogs.OptionsDialog)
@@ -212,9 +247,15 @@ class GlobalPlugin(_GlobalPlugin):
 		self.menu.Remove(self.mute_item.Id)
 		self.mute_item.Destroy()
 		self.mute_item=None
+		self.menu.Remove(self.audio_item.Id)
+		self.audio_item.Destroy()
+		self.audio_item=None
 		self.menu.Remove(self.push_clipboard_item.Id)
 		self.push_clipboard_item.Destroy()
 		self.push_clipboard_item=None
+		self.menu.Remove(self.clipboard_sync_item.Id)
+		self.clipboard_sync_item.Destroy()
+		self.clipboard_sync_item=None
 		self.menu.Remove(self.send_file_item.Id)
 		self.send_file_item.Destroy()
 		self.send_file_item=None
@@ -227,6 +268,9 @@ class GlobalPlugin(_GlobalPlugin):
 		self.menu.Remove(self.send_ctrl_alt_del_item.Id)
 		self.send_ctrl_alt_del_item.Destroy()
 		self.send_ctrl_alt_del_item=None
+		self.menu.Remove(self.firewall_item.Id)
+		self.firewall_item.Destroy()
+		self.firewall_item=None
 		tools_menu = gui.mainFrame.sysTrayIcon.toolsMenu
 		tools_menu.Remove(self.remote_item.Id)
 		self.remote_item.Destroy()
@@ -286,6 +330,66 @@ class GlobalPlugin(_GlobalPlugin):
 			if not configuration.get_config()['ui']['mute_when_controlling_local_machine']:
 				self.local_machine.is_muted = False
 			self.muted = False
+
+	def on_audio_item(self, evt):
+		if evt:
+			evt.Skip()
+		self.audio.toggle()
+		# The checkbox must follow the real state, not the click: starting always involves
+		# the other machine and may fail or time out, whichever end asked for it.
+		self.update_audio_menu(self.audio.active)
+
+	def on_clipboard_sync_item(self, evt):
+		if evt:
+			evt.Skip()
+		self.clipboard_sync.toggle()
+
+	def set_audio_item_role(self, as_slave):
+		"""Label the audio item for the end we are on: the controlling computer plays the
+		other machine's audio, the controlled computer shares its own. Same item, same
+		gesture — only the wording differs."""
+		item = getattr(self, 'audio_item', None)
+		if not (getattr(self, 'menu', None) and item):
+			return
+		if as_slave:
+			# Translators: Checkable menu item in remremote submenu, on the controlled computer, to share its audio.
+			item.SetItemLabel(_("Stream &audio to the controlling computer"))
+			# Translators: description of the audio menu item on the controlled computer.
+			item.SetHelp(_("Play the audio of this computer on the controlling computer"))
+		else:
+			# Translators: Checkable menu item in remremote submenu to stream the remote computer's audio.
+			item.SetItemLabel(_("Stream remote &audio"))
+			# Translators: description of the remote audio menu item
+			item.SetHelp(_("Play the audio of the remote computer on this computer"))
+
+	def update_audio_menu(self, state):
+		"""Reflect the true audio streaming state in the menu. Called by the audio manager
+		whenever the state changes, including when the change came from a failure. Tolerates
+		being called before the menu exists (managers are constructed first) and after it is
+		torn down."""
+		item = getattr(self, 'audio_item', None)
+		if getattr(self, 'menu', None) and item:
+			item.Check(bool(state))
+
+	def update_remote_tts_setting(self, state):
+		"""Keep the settings panel's checkbox truthful when the setting was changed from
+		outside the dialog — by the gesture, or by the other computer. The panel has no
+		menu item; it may simply not be on screen, which is the common case."""
+		panel = dialogs.OptionsDialog.active_panel
+		if panel is None:
+			return
+		try:
+			panel.use_remote_tts.SetValue(bool(state))
+		except RuntimeError:
+			# The panel was destroyed between the check and here.
+			dialogs.OptionsDialog.active_panel = None
+
+	def update_clipboard_sync_menu(self, state):
+		"""Reflect the shared clipboard-sync state in the menu — also when the other
+		computer was the one that toggled it. Same lifetime tolerance as above."""
+		item = getattr(self, 'clipboard_sync_item', None)
+		if getattr(self, 'menu', None) and item:
+			item.Check(bool(state))
 
 	def on_push_clipboard_item(self, evt):
 		connector = self.slave_transport or self.master_transport
@@ -410,6 +514,8 @@ class GlobalPlugin(_GlobalPlugin):
 		if self.server is not None:
 			self.server.close()
 			self.server = None
+			if self.menu and self.firewall_item:
+				self.firewall_item.Enable(False)
 		if self.master_transport is not None:
 			self.disconnect_as_master()
 		if self.slave_transport is not None:
@@ -425,8 +531,15 @@ class GlobalPlugin(_GlobalPlugin):
 		self.send_file_item.Enable(False)
 		self.copy_link_remote_item.Enable(False)
 		self.copy_link_tele_item.Enable(False)
+		self.audio_item.Enable(False)
+		self.audio_item.Check(False)
+		self.set_audio_item_role(as_slave=False)
+		self.clipboard_sync_item.Enable(False)
+		self.clipboard_sync_item.Check(False)
 
 	def disconnect_as_master(self):
+		self.audio.shutdown()
+		self.clipboard_sync.shutdown()
 		self.master_transport.close()
 		self.master_transport = None
 		self.master_session = None
@@ -445,6 +558,11 @@ class GlobalPlugin(_GlobalPlugin):
 			self.copy_link_remote_item.Enable(False)
 			self.copy_link_tele_item.Enable(False)
 			self.send_ctrl_alt_del_item.Enable(False)
+			self.audio_item.Enable(False)
+			self.audio_item.Check(False)
+			self.set_audio_item_role(as_slave=False)
+			self.clipboard_sync_item.Enable(False)
+			self.clipboard_sync_item.Check(False)
 		if self.local_machine:
 			self.local_machine.is_muted = False
 		self.sending_keys = False
@@ -457,6 +575,8 @@ class GlobalPlugin(_GlobalPlugin):
 		self.key_modifiers = set()
 
 	def disconnect_as_slave(self):
+		self.audio.shutdown()
+		self.clipboard_sync.shutdown()
 		self.slave_transport.close()
 		self.slave_transport = None
 		self.slave_session = None
@@ -499,7 +619,18 @@ class GlobalPlugin(_GlobalPlugin):
 			else: #We want a server
 				channel = dlg.panel.key.GetValue()
 				encryption_key = dlg.panel.encryption_key.GetValue()
-				self.start_control_server(int(dlg.panel.port.GetValue()), channel, useUPNP=bool(dlg.panel.useUPNP.GetValue()))
+				server_port = int(dlg.panel.port.GetValue())
+				useUPNP = bool(dlg.panel.useUPNP.GetValue())
+				if not useUPNP:
+					useUPNP = gui.messageBox(
+						# Translators: question asked before starting a control server, offering to forward the port automatically.
+						message=_("remremote can try to automatically forward port {port} in your router using UPnP: TCP for the control connection and UDP for remote audio streaming. Do you want to do this now?").format(port=server_port),
+						# Translators: title of the automatic port forwarding question.
+						caption=_("Automatic port forwarding"),
+						style=wx.YES | wx.NO | wx.ICON_QUESTION) == wx.YES
+				if not self.start_control_server(server_port, channel, useUPNP=useUPNP):
+					setattr(self, 'is_connect_dialog_open', False)
+					return
 				if dlg.connection_type.GetSelection() == 0:
 					self.connect_as_master(('127.0.0.1', int(dlg.panel.port.GetValue())), channel, insecure=True, encryption_key=encryption_key)
 				else:
@@ -521,6 +652,15 @@ class GlobalPlugin(_GlobalPlugin):
 		self.copy_link_remote_item.Enable(True)
 		self.copy_link_tele_item.Enable(True)
 		self.send_ctrl_alt_del_item.Enable(True)
+		# Audio streaming is the controlled machine's switch, but the controlling side may
+		# ask for it — from the menu item or the gesture.
+		self.set_audio_item_role(as_slave=False)
+		self.audio_item.Enable(True)
+		self.clipboard_sync_item.Enable(True)
+		# We own the "use the remote synthesizer" setting: tell the controlled computer where
+		# it stands, so its own gesture toggles from the right value and its user is never
+		# shown a state we don't agree with.
+		self.audio.send_remote_tts_state()
 		if buildVersion.version_year < 2025:
 			# We might have already created a hook thread before if we're restoring an
 			# interrupted connection. We must not create another.
@@ -546,11 +686,16 @@ class GlobalPlugin(_GlobalPlugin):
 		transport.callback_manager.register_callback(TransportEvents.CONNECTION_FAILED, self.on_connected_as_master_failed)
 		transport.callback_manager.register_callback(TransportEvents.CLOSING, self.disconnecting_as_master)
 		transport.callback_manager.register_callback(TransportEvents.DISCONNECTED, self.on_disconnected_as_master)
+		self.audio.register_master(transport)
+		self.clipboard_sync.register(transport)
 		self.master_transport = transport
 		self.master_transport.reconnector_thread.start()
 
 	def connect_as_slave(self, address, key, encryption_key, insecure=False):
-		if not nvda_conf['keyboard']['handleInjectedKeys'] and gui.messageBox(
+		# The secure desktop copy joins its local bridge unattended; a modal dialog there
+		# would silently block the handover, and the setting it asks about belongs to the
+		# user session anyway.
+		if not globalVars.appArgs.secure and not nvda_conf['keyboard']['handleInjectedKeys'] and gui.messageBox(
 		# Translators: A message to warn the user that handle keys from other applications should be on.
 		message=_("The option to handle keys from other applications is disabled in your NVDA keyboard settings. In order to allow the keyboard of this machine to be controlled, this option should be enabled. Would you like to do this now?"),
 		# Translators: The title of the warning dialog displayed when handle keys from other applications is disabled.
@@ -561,6 +706,12 @@ class GlobalPlugin(_GlobalPlugin):
 		self.slave_transport = transport
 		transport.callback_manager.register_callback(TransportEvents.CERTIFICATE_AUTHENTICATION_FAILED, self.on_certificate_as_slave_failed)
 		self.slave_transport.callback_manager.register_callback(TransportEvents.CONNECTED, self.on_connected_as_slave)
+		# Not on the secure desktop: the user session is still streaming audio from its own
+		# helper process, and a second one would fight it for the same UDP port. Clipboard
+		# sync belongs to the user session for the same reason.
+		if not globalVars.appArgs.secure:
+			self.audio.register_slave(transport)
+			self.clipboard_sync.register(transport)
 		self.slave_transport.reconnector_thread.start()
 		if not self.menu.FindItemById(self.disconnect_item.Id):
 			self.menu.Insert(0, self.disconnect_item)
@@ -570,6 +721,7 @@ class GlobalPlugin(_GlobalPlugin):
 	def handle_certificate_failed(self, transport):
 		self.last_fail_address = transport.address
 		self.last_fail_key = transport.channel
+		self.last_fail_encryption_key = getattr(transport, 'encryption_key', '')
 		self.disconnect()
 		try:
 			cert_hash = transport.last_fail_fingerprint
@@ -586,29 +738,128 @@ class GlobalPlugin(_GlobalPlugin):
 
 	def on_certificate_as_master_failed(self):
 		if self.handle_certificate_failed(self.master_transport):
-			self.connect_as_master(self.last_fail_address, self.last_fail_key, True)
+			# The user accepted the certificate: reconnect with the same encryption key,
+			# this time without certificate verification.
+			self.connect_as_master(self.last_fail_address, self.last_fail_key, self.last_fail_encryption_key, insecure=True)
 
 	def on_certificate_as_slave_failed(self):
 		if self.handle_certificate_failed(self.slave_transport):
-			self.connect_as_slave(self.last_fail_address, self.last_fail_key, True)
+			self.connect_as_slave(self.last_fail_address, self.last_fail_key, self.last_fail_encryption_key, insecure=True)
 
 	def on_connected_as_slave(self):
 		log.info("Control connector connected")
 		cues.control_server_connected()
-		# Translators: Presented in direct (client to server) remote connection when the controlled computer is ready.
-		speech.speakMessage(_("Connected to control server"))
+		if not self.sd_handover:
+			# Announce a real connection, but stay quiet for the internal handover to a
+			# secure desktop — that one fires on every single UAC prompt, where the cue
+			# above is feedback enough.
+			# Translators: Presented in direct (client to server) remote connection when the controlled computer is ready.
+			speech.speakMessage(_("Connected to control server"))
 		self.push_clipboard_item.Enable(True)
 		if not globalVars.appArgs.secure:
 			self.send_file_item.Enable(True)
 		self.copy_link_remote_item.Enable(True)
 		self.copy_link_tele_item.Enable(True)
+		# Clipboard sync is symmetric — the controlled machine may toggle it too.
+		self.clipboard_sync_item.Enable(True)
+		# The audio being shared is this machine's own, so its user owns the switch. Not on
+		# the secure desktop, where no helper process of ours runs (see connect_as_slave).
+		if not globalVars.appArgs.secure:
+			self.set_audio_item_role(as_slave=True)
+			self.audio_item.Enable(True)
 		configuration.write_connection_to_config(self.slave_transport.address)
 
 	def start_control_server(self, server_port, channel, useUPNP=False):
-		self.server = server.Server(server_port, channel, UPNP=useUPNP)
+		"""Starts hosting a control server. Returns False if the port could not be bound,
+		in which case the caller must not go on to connect to it."""
+		if self.server is not None:
+			# Already hosting — most likely a second autoconnect attempt. Reusing the
+			# running server is right; binding the port again would just fail.
+			return True
+		self.maybe_offer_firewall_exception(server_port)
+		try:
+			self.server = server.Server(server_port, channel, UPNP=useUPNP)
+		except OSError:
+			log.exception("Could not start the control server on port %s" % server_port)
+			self.server = None
+			# Translators: reported when the control server could not be started; {port} is the port number.
+			ui.message(_("Could not start the control server on port {port}. Another program — or another copy of NVDA — may already be using it.").format(port=server_port))
+			return False
 		server_thread = threading.Thread(target=self.server.run)
 		server_thread.daemon = True
 		server_thread.start()
+		if self.menu and self.firewall_item:
+			self.firewall_item.Enable(True)
+		return True
+
+	def on_firewall_item(self, evt):
+		if evt:
+			evt.Skip()
+		if self.server is None:
+			# Translators: reported when firewall rules are requested while not hosting a control server.
+			ui.message(_("No control server is running on this computer."))
+			return
+		self.add_firewall_exceptions(self.server.port)
+
+	def maybe_offer_firewall_exception(self, port):
+		"""One-time offer, on the very first start of a self-hosted control server, to add
+		Windows Firewall exceptions for NVDA (inbound TCP control connections) and the audio
+		helper (inbound UDP audio). Asked exactly once; the answer is acted on immediately and
+		the question is never repeated either way."""
+		if globalVars.appArgs.secure or configuration.readonly:
+			# We could neither remember the answer nor sensibly show a dialog here; the
+			# menu item stays available for a deliberate manual run.
+			return
+		config = configuration.get_config()
+		if config['firewall']['prompt_shown']:
+			return
+		config['firewall']['prompt_shown'] = True
+		if not configuration.readonly:
+			config.write()
+		result = gui.messageBox(
+			# Translators: question asked the first time the user hosts a control server, offering to add firewall exceptions.
+			message=_("Since you are hosting a control server for the first time: should remremote add itself to the Windows Firewall exceptions, so that incoming control and audio connections are not blocked? This may trigger a User Account Control prompt which you will need to confirm."),
+			# Translators: title of the firewall exception question.
+			caption=_("Windows Firewall"),
+			style=wx.YES | wx.NO | wx.ICON_QUESTION)
+		if result != wx.YES:
+			return
+		self.add_firewall_exceptions(port)
+
+	def add_firewall_exceptions(self, port):
+		"""Adds inbound allow rules on the given port for nvda.exe (TCP control) and the bundled
+		audio helper (UDP audio) via an elevated netsh — one cmd.exe invocation, one UAC prompt.
+		Control and audio share the same port number, so one number covers the whole session.
+
+		Every pre-existing inbound rule for those two programs is deleted first. This is not
+		just duplicate hygiene: Windows Firewall gives BLOCK rules precedence over allow
+		rules, so a leftover block rule for nvda.exe — which Windows creates silently
+		whenever someone dismisses its "allow this app?" prompt — makes an added allow rule
+		useless and leaves the port unreachable from outside while looking perfectly
+		forwarded in the router. Deleting first and re-adding is the only reliable fix.
+		profile=any so the rules also apply when Windows has classified the network as
+		public, which is where those block rules usually live.
+		"""
+		buf = ctypes.create_unicode_buffer(260)
+		ctypes.windll.kernel32.GetModuleFileNameW(None, buf, 260)
+		nvda_exe = buf.value
+		host_exe = audio.host_exe_path()
+		commands = (
+			f'netsh advfirewall firewall delete rule name=all dir=in program="{nvda_exe}"'
+			f' & netsh advfirewall firewall delete rule name=all dir=in program="{host_exe}"'
+			' & netsh advfirewall firewall delete rule name="remremote control"'
+			' & netsh advfirewall firewall delete rule name="remremote audio"'
+			f' & netsh advfirewall firewall add rule name="remremote control" dir=in action=allow protocol=tcp localport={port} profile=any program="{nvda_exe}"'
+			f' & netsh advfirewall firewall add rule name="remremote audio" dir=in action=allow protocol=udp localport={port} profile=any program="{host_exe}"'
+		)
+		ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + commands, None, 0)
+		if ret <= 32:
+			# Launch failed or the user dismissed the UAC prompt.
+			# Translators: reported when the firewall exceptions could not be added.
+			ui.message(_("Could not add the firewall exceptions. You can add NVDA and the audio helper to the Windows Firewall manually."))
+		else:
+			# Translators: reported after requesting the firewall exceptions.
+			ui.message(_("Firewall exceptions requested. Please confirm the User Account Control prompt if it appears."))
 
 	def hook(self):
 		log.debug("Hook thread start")
@@ -691,63 +942,112 @@ class GlobalPlugin(_GlobalPlugin):
 		"""function ran when entering a secure desktop."""
 		if self.slave_transport is None:
 			return
-		if not os.path.exists(self.temp_location):
-			os.makedirs(self.temp_location)
-		channel = str(uuid.uuid4())
-		self.sd_server = server.Server(port=0, password=channel, bind_host='127.0.0.1')
-		port = self.sd_server.server_socket.getsockname()[1]
-		server_thread = threading.Thread(target=self.sd_server.run)
-		server_thread.daemon = True
-		server_thread.start()
-		self.sd_relay = RelayTransport(address=('127.0.0.1', port), serializer=serializer.JSONSerializer(), channel=channel, insecure=True)
-		self.sd_relay.callback_manager.register_callback('msg_client_joined', self.on_master_display_change)
-		self.slave_transport.callback_manager.register_callback('msg_set_braille_info', self.on_master_display_change)
-		self.sd_bridge = bridge.BridgeTransport(self.slave_transport, self.sd_relay)
-		relay_thread = threading.Thread(target=self.sd_relay.run)
-		relay_thread.daemon = True
-		relay_thread.start()
-		data = [port, channel]
-		with open(self.ipc_file, 'w') as fp:
-			json.dump(data, fp)
+		if self.sd_server is not None:
+			# A second desktop change event must not start a second relay behind the
+			# first one's back — that would leak the server and its thread.
+			return
+		try:
+			if not os.path.exists(self.temp_location):
+				os.makedirs(self.temp_location)
+			channel = str(uuid.uuid4())
+			# Loopback only, for both families: nothing outside this machine has any
+			# business talking to the handover relay.
+			self.sd_server = server.Server(port=0, password=channel, bind_host='127.0.0.1', bind_host6='::1')
+			port = self.sd_server.server_socket.getsockname()[1]
+			server_thread = threading.Thread(target=self.sd_server.run)
+			server_thread.daemon = True
+			server_thread.start()
+			self.sd_relay = RelayTransport(address=('127.0.0.1', port), serializer=serializer.JSONSerializer(), channel=channel, insecure=True)
+			self.sd_relay.callback_manager.register_callback('msg_client_joined', self.on_master_display_change)
+			self.slave_transport.callback_manager.register_callback('msg_set_braille_info', self.on_master_display_change)
+			self.sd_bridge = bridge.BridgeTransport(self.slave_transport, self.sd_relay)
+			relay_thread = threading.Thread(target=self.sd_relay.run)
+			relay_thread.daemon = True
+			relay_thread.start()
+			data = [port, channel]
+			# Written last: its presence is what tells the secure desktop copy of NVDA
+			# that there is a working relay to join.
+			with open(self.ipc_file, 'w') as fp:
+				json.dump(data, fp)
+		except Exception:
+			log.exception("Could not prepare the secure desktop handover")
+			self.cleanup_secure_desktop()
 
 	def leave_secure_desktop(self):
 		if self.sd_server is None:
 			return #Nothing to do
-		self.sd_bridge.disconnect()
-		self.sd_bridge = None
-		self.sd_server.close()
-		self.sd_server = None
-		self.sd_relay.close()
-		self.sd_relay = None
-		self.slave_transport.callback_manager.unregister_callback('msg_set_braille_info', self.on_master_display_change)
-		self.slave_session.set_display_size()
+		self.cleanup_secure_desktop()
+		if self.slave_session is not None:
+			self.slave_session.set_display_size()
+
+	def cleanup_secure_desktop(self):
+		"""Tear down whatever parts of the handover exist, in any order of partial setup."""
+		if self.sd_bridge is not None:
+			self.sd_bridge.disconnect()
+			self.sd_bridge = None
+		if self.sd_server is not None:
+			self.sd_server.close()
+			self.sd_server = None
+		if self.sd_relay is not None:
+			self.sd_relay.close()
+			self.sd_relay = None
+		if self.slave_transport is not None:
+			try:
+				self.slave_transport.callback_manager.unregister_callback('msg_set_braille_info', self.on_master_display_change)
+			except ValueError:
+				pass  # setup never got this far
+		try:
+			os.unlink(self.ipc_file)
+		except OSError:
+			pass
 
 	def on_master_display_change(self, **kwargs):
 		self.sd_relay.send(type='set_display_size', sizes=self.slave_session.master_display_sizes)
 
 	SD_CONNECT_BLOCK_TIMEOUT = 1
 	def handle_secure_desktop(self):
+		"""Join the local bridge that the user session set up, so the remote side keeps
+		seeing this machine while a secure desktop (UAC, sign-in screen) is up.
+
+		Returns True only if we actually joined it. False means there was nothing to join
+		— on the sign-in screen there is no user session at all — and the caller is then
+		free to establish a connection of its own."""
 		try:
 			with open(self.ipc_file) as fp:
 				data = json.load(fp)
 			os.unlink(self.ipc_file)
+		except FileNotFoundError:
+			# No session was active when the secure desktop appeared: nothing to join.
+			return False
+		except (OSError, ValueError):
+			log.exception("Could not read the secure desktop handover file")
+			return False
+		try:
 			port, channel = data
 			test_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			test_socket=wrap_socket(test_socket, ssl_version=ssl.PROTOCOL_TLS_CLIENT)
 			test_socket.connect(('127.0.0.1', port))
 			test_socket.close()
-			self.connect_as_slave(('127.0.0.1', port), channel, insecure=True)
+			# The bridge is a plain loopback relay: the user session's transport already
+			# decrypted everything, so this hop carries no application layer key.
+			self.sd_handover = True
+			self.connect_as_slave(('127.0.0.1', port), channel, encryption_key='', insecure=True)
 			# So we don't miss the first output when switching to a secure desktop,
 			# block the main thread until the connection is established. We're
 			# connecting to localhost, so this should be pretty fast. Use a short
 			# timeout, though.
 			self.slave_transport.connected_event.wait(self.SD_CONNECT_BLOCK_TIMEOUT)
-		except:
-			pass
+			return True
+		except Exception:
+			# Never let this kill the plugin, but do leave a trace: a silent failure here
+			# looks to the user exactly like "the add-on does nothing in the UAC dialog".
+			log.exception("Could not join the remote session on the secure desktop")
+			self.sd_handover = False
+			return False
 
 	def verify_connect(self, con_info):
 		if self.is_connected() or self.connecting:
-			gui.messageBox(_("TeleNVDA is already connected. Disconnect before opening a new connection."), _("TeleNVDA Already Connected"), wx.OK|wx.ICON_WARNING)
+			gui.messageBox(_("remremote is already connected. Disconnect before opening a new connection."), _("remremote Already Connected"), wx.OK|wx.ICON_WARNING)
 			return
 		self.connecting = True
 		server_addr = con_info.get_address()
@@ -757,7 +1057,7 @@ class GlobalPlugin(_GlobalPlugin):
 			message = _("Do you wish to control the machine on server {server} with key {key}?").format(server=server_addr, key=key)
 		elif con_info.mode == 'slave':
 			message = _("Do you wish to allow this machine to be controlled on server {server} with key {key}?").format(server=server_addr, key=key)
-		if gui.messageBox(message, _("TeleNVDA Connection Request"), wx.YES|wx.NO|wx.NO_DEFAULT|wx.ICON_WARNING) != wx.YES:
+		if gui.messageBox(message, _("remremote Connection Request"), wx.YES|wx.NO|wx.NO_DEFAULT|wx.ICON_WARNING) != wx.YES:
 			self.connecting = False
 			return
 		if con_info.mode == 'master':
@@ -803,7 +1103,7 @@ class GlobalPlugin(_GlobalPlugin):
 		**speakOnDemand)
 	def script_connect(self, gesture):
 		if self.master_transport or self.slave_transport:
-			ui.message(_("TeleNVDA Already Connected"))
+			ui.message(_("remremote Already Connected"))
 			return
 		self.do_connect(None)
 
@@ -904,6 +1204,41 @@ class GlobalPlugin(_GlobalPlugin):
 		self.on_mute_item(None)
 
 	@script(
+		# Translators: gesture description for the toggle remote audio script
+		description=_("""Turn streaming of the controlled computer's audio on or off"""),
+		gesture="kb:control+shift+NVDA+a",
+		**speakOnDemand)
+	def script_toggle_remote_audio(self, gesture):
+		# Works on both ends: on the controlled computer it shares (or takes back) its own
+		# audio, on the controlling computer it asks that machine to share. Pressed with key
+		# forwarding on, it travels to the controlled computer and toggles it right there.
+		if self.connecting:
+			return
+		self.on_audio_item(None)
+
+	@script(
+		# Translators: gesture description for the clipboard sync toggle
+		description=_("""Turn synchronisation of both computers' clipboards on or off"""),
+		gesture="kb:control+shift+NVDA+k",
+		**speakOnDemand)
+	def script_toggle_clipboard_sync(self, gesture):
+		if self.connecting:
+			return
+		self.clipboard_sync.toggle()
+
+	@script(
+		# Translators: gesture description for the remote speech synthesizer toggle
+		description=_("""Turn using the speech synthesizer of the remote computer during audio streaming on or off"""),
+		gesture="kb:control+shift+NVDA+s",
+		**speakOnDemand)
+	def script_toggle_remote_tts(self, gesture):
+		# Usable from both ends, like the audio toggle itself: only the controlling computer
+		# stores the setting, the controlled one asks it to flip.
+		if self.connecting:
+			return
+		self.audio.toggle_remote_tts()
+
+	@script(
 		# Translators: send Ctrl+Alt+Delete gesture description
 		description=_("""Sends Ctrl+Alt+Delete to the remote machine"""),
 		**speakOnDemand)
@@ -916,3 +1251,13 @@ class GlobalPlugin(_GlobalPlugin):
 		description=_("""Opens the addon settings panel inside NVDA settings dialog"""))
 	def script_options(self, gesture):
 		self.on_options_item(None)
+
+	@script(
+		# Translators: gesture description for the repair firewall exceptions script
+		description=_("""Adds or repairs the Windows Firewall exceptions for remremote"""),
+		**speakOnDemand)
+	def script_add_firewall_exceptions(self, gesture):
+		# Deliberately bypasses the one-time prompt flag: this is the manual escape hatch for
+		# when incoming connections are blocked despite a working router port forward (usually
+		# a stale Windows block rule for nvda.exe — see add_firewall_exceptions).
+		self.on_firewall_item(None)

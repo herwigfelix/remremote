@@ -258,6 +258,155 @@ Below is a detailed specification of each message type using JSONSchema:
 }
 ```
 
+### Audio streaming (remremote extension)
+
+These messages negotiate streaming the slave's system audio to the master. The audio
+itself never travels over this channel: it flows over a separate UDP stream in the
+RemSound wire format (Opus frames, AES-256-GCM sealed with a key derived from the
+connection's encryption key, or the channel key when no encryption key is set), handled
+by the bundled `RemSound.Host.exe` helper. The side that runs the control server binds
+the UDP audio port using the same port number as the TCP control server, so only one
+port ever needs forwarding. Relayed sessions are not supported yet. Peers that do not
+implement this extension simply ignore `audio_start` and `audio_offer`; the asking side
+reports a timeout.
+
+The switch belongs to the slave — it is that machine's own audio being shared — and both
+users may operate it. The master's toggle is a request (`audio_start` / `audio_stop`).
+The slave's own toggle sends `audio_offer`, which makes the master run the same
+`audio_start` handshake it would have run had its own user asked, or `audio_stopped` when
+the slave takes its audio back. Everything therefore goes through one negotiation path:
+only the master knows whether it hosts the connection, and that is what decides which
+side binds the UDP port.
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "audio_start": {
+      "description": "Master asks the slave to start streaming its audio (minus the NVDA process tree, unless remote_tts is true).",
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio_start" },
+        "master_hosting": { "type": "boolean" },
+        "port": { "type": ["integer", "null"], "description": "The master's control-server port when master_hosting is true." },
+        "remote_tts": { "type": "boolean", "description": "Keep NVDA IN the captured audio and stop forwarding speech as text, so the master hears the slave's own synthesizer. Absent from older masters; treat as false." }
+      },
+      "required": ["type", "master_hosting"]
+    },
+    "audio_started": {
+      "description": "Slave confirms it is streaming. mode=connect: the slave streams at the master's UDP port. mode=host: the slave bound its own UDP port and waits for the master's sealed hello packets.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio_started" },
+        "mode": { "enum": ["connect", "host"] },
+        "port": { "type": "integer" },
+        "remote_tts": { "type": "boolean", "description": "What the slave actually did, so the master never claims to hear a voice that is still arriving as text. Absent from older slaves; treat as false." }
+      },
+      "required": ["type", "mode", "port"]
+    },
+    "audio_error": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio_error" },
+        "reason": { "enum": ["relay_unsupported", "host_start_failed", "dotnet_missing"] }
+      },
+      "required": ["type", "reason"]
+    },
+    "audio_stop": {
+      "description": "Master tells the slave to stop streaming.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio_stop" }
+      },
+      "required": ["type"]
+    },
+    "audio_offer": {
+      "description": "Slave wants to share its audio: the master answers with the normal audio_start handshake (or ignores it when already streaming).",
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio_offer" }
+      },
+      "required": ["type"]
+    },
+    "audio_stopped": {
+      "description": "Slave stopped streaming on its own end (user toggle, or its helper died). The master tears its receiver down.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "audio_stopped" }
+      },
+      "required": ["type"]
+    },
+    "remote_tts": {
+      "description": "Master announces its 'use the slave's own synthesizer' setting. Sent on connect and after every change, on either end.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "remote_tts" },
+        "state": { "type": "boolean" }
+      },
+      "required": ["type", "state"]
+    },
+    "remote_tts_request": {
+      "description": "Slave asks the master to set that setting. The master owns and stores it, applies the request, and announces the result with remote_tts — so only the request ever travels this way and there is no toggle loop.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "remote_tts_request" },
+        "state": { "type": "boolean" }
+      },
+      "required": ["type", "state"]
+    }
+  }
+}
+```
+
+Whether the master hears the slave's own synthesizer is a setting of the **master**: it is
+that machine's user who decides how they want to listen, and only that machine stores it
+(`[audio] use_remote_tts`). Either user may flip it — the slave sends
+`remote_tts_request` and adopts the `remote_tts` answer — so both ends always agree
+without either having to remember the other's state.
+
+It changes nothing outside a stream. The slave stops forwarding speech, beeps and wave
+files only once its sender is confirmed running, and resumes on every exit path (stop,
+helper failure, helper death, disconnect). A slave that suppressed text speech without
+audio to replace it would be unreadable. Because whether NVDA is part of the captured
+audio is fixed when the sender starts, changing the setting mid-stream makes the master
+tear the stream down and build it back up.
+
+### Clipboard synchronisation (remremote extension)
+
+While enabled, each side pushes its clipboard to the other whenever it changes, so both
+clipboards hold the same text. Text only — other clipboard formats are ignored. The
+toggle is shared state: either side may flip it, and the peer adopts the same state
+without echoing it back (which would ping-pong the toggle). Text updates are capped at
+100000 characters so a huge paste cannot stall speech and braille behind it on the shared
+control channel. Peers that do not implement this extension ignore both messages, so the
+toggle simply has no effect on the far side.
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "clipboard_sync": {
+      "description": "Turn clipboard synchronisation on or off. Applied by the peer verbatim; never echoed back.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "clipboard_sync" },
+        "state": { "type": "boolean" }
+      },
+      "required": ["type", "state"]
+    },
+    "clipboard_sync_text": {
+      "description": "New clipboard text to apply. Ignored when the receiver has synchronisation off, or when the text matches what it last sent or applied (echo suppression).",
+      "type": "object",
+      "properties": {
+        "type": { "const": "clipboard_sync_text" },
+        "text": { "type": "string" }
+      },
+      "required": ["type", "text"]
+    }
+  }
+}
+```
+
 ## Security Considerations
 
 - All connections are encrypted using SSL/TLS.

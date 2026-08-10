@@ -50,11 +50,6 @@ msgstr ""
 msgid "Running NVDA Remote detected"
 msgstr "Es wurde das Ausführen von NVDA-Remote erkannt"
 
-#. Translators: script category for add-on gestures
-#. Translators: title for the TeleNVDA settings category in NVDA settings dialog
-msgid "TeleNVDA"
-msgstr "TeleNVDA"
-
 msgid "Your NVDA Remote configuration was corrupted and has been reset."
 msgstr ""
 "Die Konfiguration von NVDA-Remote war beschädigt und wurde zurückgesetzt."
@@ -264,15 +259,6 @@ msgstr "Warnung"
 msgid "Connected to control server"
 msgstr "Mit dem Kontroll-Server verbunden"
 
-msgid ""
-"TeleNVDA is already connected. Disconnect before opening a new connection."
-msgstr ""
-"TeleNVDA ist bereits verbunden. Trennen Sie zuerst die Verbindung, bevor Sie "
-"eine neue Verbindung aufbauen."
-
-msgid "TeleNVDA Already Connected"
-msgstr "TeleNVDA ist bereits verbunden"
-
 #, python-brace-format
 msgid "Do you wish to control the machine on server {server} with key {key}?"
 msgstr ""
@@ -286,9 +272,6 @@ msgid ""
 msgstr ""
 "Möchten Sie die Steuerung dieses Rechners über den Server {server} mit dem "
 "Schlüssel {key} erlauben?"
-
-msgid "TeleNVDA Connection Request"
-msgstr "TeleNVDA-Verbindungsanfrage"
 
 #. Translators: Copy link compatible with NVDA Remote gesture description
 msgid ""
@@ -512,10 +495,6 @@ msgid ""
 "Invalid format for portcheck service URL. You must include {port} somewhere."
 msgstr "Ungültiges Format für die Service-URL des Port-Checks: {port} fehlt."
 
-#. Translators: A title bar of a window presented when an attempt has been made to connect with a server with unauthorized certificate.
-msgid "TeleNVDA Connection Security Warning"
-msgstr "Sicherheitswarnung über die TeleNVDA-Verbindung"
-
 #. Translators: A message of a window presented when an attempt has been made to connect with a server with unauthorized certificate.
 #, python-brace-format
 msgid ""
@@ -585,20 +564,6 @@ msgstr "Ungültige URL"
 msgid "Unable to parse url \"%s\""
 msgstr "Die Url \"%s\" konnte nicht geparst werden"
 
-#. Add-on summary, usually the user visible name of the addon.
-#. Translators: Summary for this add-on to be shown on installation and add-on information.
-msgid "Tele NVDA remote assistance"
-msgstr "TeleNVDA-Fernunterstützung"
-
-#. Add-on description
-#. Translators: Long description to be shown for this add-on on add-on information from add-ons manager
-msgid ""
-"Allows remote control of and remote access to another machine. This add-on "
-"is based on NVDA Remote."
-msgstr ""
-"Stellt einen Zugriff von und auf einen anderen Computer her. Diese NVDA-"
-"Erweiterung basiert auf NVDA-Remote."
-
 #~ msgid "Remote Support"
 #~ msgstr "Unterstützung von Fernsteuerung"
 
@@ -607,3 +572,287 @@ msgstr ""
 
 #~ msgid "NVDA Remote Access"
 #~ msgstr "Fernsteuerung für NVDA"
+
+#. Translators: script category for add-on gestures; also the settings category and tools menu name
+msgid "remremote"
+msgstr "remremote"
+
+#. Translators: caption when the add-on is already connected
+msgid "remremote Already Connected"
+msgstr "remremote ist bereits verbunden"
+
+#. Translators: message when trying to open a new connection while connected
+msgid "remremote is already connected. Disconnect before opening a new connection."
+msgstr "remremote ist bereits verbunden. Trennen Sie die Verbindung, bevor Sie eine neue aufbauen."
+
+#. Translators: title of the connection request dialog
+msgid "remremote Connection Request"
+msgstr "remremote-Verbindungsanfrage"
+
+#. Translators: title of the certificate security warning dialog
+msgid "remremote Connection Security Warning"
+msgstr "Sicherheitswarnung über die remremote-Verbindung"
+
+#. Translators: Summary for this add-on to be shown on installation and add-on information.
+msgid "remremote remote assistance"
+msgstr "remremote-Fernunterstützung"
+
+#. Translators: Long description to be shown for this add-on on add-on information from add-ons manager
+msgid "Allows remote control of and remote access to another machine, including streaming the remote computer's audio. remremote is a fork of TeleNVDA, which itself is based on NVDA Remote."
+msgstr "Ermöglicht die Fernsteuerung von und den Fernzugriff auf einen anderen Computer, einschließlich der Übertragung des Tons des entfernten Computers. remremote ist ein Fork von TeleNVDA, das wiederum auf NVDA Remote basiert."
+
+#. Translators: what's new content for the add-on version to be shown in the add-on store
+msgid "First remremote release: stream the remote computer's audio from either end (control+shift+NVDA+a), optionally hearing that computer's own speech synthesizer instead of its text speech (control+shift+NVDA+s), keep both clipboards in sync (control+shift+NVDA+k), UPnP port forwarding for both TCP and UDP with a confirmation prompt, and guided installation of the .NET 10 Desktop Runtime when it is missing. Also fixes the add-on staying unreachable inside UAC prompts and other secure desktops."
+msgstr "Erste remremote-Version: Überträgt den Ton des entfernten Computers von beiden Seiten aus (Strg+Umschalt+NVDA+a), auf Wunsch mit der eigenen Sprachausgabe jenes Computers anstelle seiner Textsprache (Strg+Umschalt+NVDA+s), hält die Zwischenablagen beider Computer synchron (Strg+Umschalt+NVDA+k), UPnP-Portweiterleitung für TCP und UDP mit Rückfrage sowie geführte Installation der .NET 10 Desktop Runtime, falls sie fehlt. Behebt außerdem, dass das Add-on in UAC-Dialogen und anderen geschützten Desktops nicht erreichbar war."
+
+#. Translators: gesture description for the toggle remote audio script
+msgid "Turn streaming of the controlled computer's audio on or off"
+msgstr "Übertragung des Tons des gesteuerten Computers ein- oder ausschalten"
+
+#. Translators: reported when the user requests audio streaming from the remote computer.
+msgid "Requesting remote audio..."
+msgstr "Remote-Audio wird angefordert..."
+
+#. Translators: reported when remote audio streaming has been turned on.
+msgid "Remote audio on"
+msgstr "Remote-Audio ein"
+
+#. Translators: reported when remote audio streaming has been turned off.
+msgid "Remote audio off"
+msgstr "Remote-Audio aus"
+
+#. Translators: reported when the controlled computer never answered the audio request.
+msgid "No response. The remote computer may not support audio streaming (remremote required on both ends)."
+msgstr "Keine Antwort. Der entfernte Computer unterstützt möglicherweise keine Audioübertragung (remremote wird auf beiden Seiten benötigt)."
+
+#. Translators: reported when audio streaming was requested over a relayed connection.
+msgid "Audio streaming is not available over relay connections yet. Use a direct connection (control server)."
+msgstr "Audioübertragung ist über Relay-Verbindungen noch nicht verfügbar. Verwenden Sie eine Direktverbindung (Kontrollserver)."
+
+#. Translators: reported when the remote computer lacks the .NET runtime for audio streaming.
+msgid "The remote computer cannot stream audio: the .NET 10 Desktop Runtime is missing there."
+msgstr "Der entfernte Computer kann kein Audio übertragen: Dort fehlt die .NET 10 Desktop Runtime."
+
+#. Translators: reported when the remote computer failed to start audio streaming; {reason} is an error code.
+#, python-brace-format
+msgid "The remote computer could not start audio streaming ({reason})."
+msgstr "Der entfernte Computer konnte die Audioübertragung nicht starten ({reason})."
+
+#. Translators: reported on the controlled computer when audio streaming starts.
+msgid "Streaming audio to the controlling computer"
+msgstr "Audio wird zum steuernden Computer übertragen"
+
+#. Translators: reported on the controlled computer when the controller stopped audio streaming.
+msgid "Stopped streaming audio to the controlling computer"
+msgstr "Audioübertragung zum steuernden Computer beendet"
+
+#. Translators: reported on the controlled computer when it offers its audio to the controller.
+msgid "Offering audio to the controlling computer..."
+msgstr "Audio wird dem steuernden Computer angeboten..."
+
+#. Translators: reported on the controlled computer when the controller never answered the audio offer.
+msgid "No response. The controlling computer may not support audio streaming (remremote required on both ends)."
+msgstr "Keine Antwort. Der steuernde Computer unterstützt möglicherweise keine Audioübertragung (remremote wird auf beiden Seiten benötigt)."
+
+#. Translators: reported when the audio offer could not be sent to the controlling computer.
+msgid "Could not offer the audio to the controlling computer."
+msgstr "Das Audio konnte dem steuernden Computer nicht angeboten werden."
+
+#. Translators: reported when audio streaming is toggled from a secure desktop (e.g. a UAC prompt).
+msgid "Audio streaming can only be switched from the normal desktop."
+msgstr "Die Audioübertragung kann nur vom normalen Desktop aus umgeschaltet werden."
+
+#. Translators: reported when the controlled computer stopped sharing its audio.
+msgid "The remote computer stopped sharing its audio"
+msgstr "Der entfernte Computer überträgt seinen Ton nicht mehr"
+
+#. Translators: reported on the controlled computer when NVDA's audio cannot be excluded from the stream.
+msgid "Warning: NVDA's own audio cannot be excluded from the stream on this version of Windows."
+msgstr "Warnung: NVDAs eigener Ton kann unter dieser Windows-Version nicht von der Übertragung ausgeschlossen werden."
+
+#. Translators: reported when the local audio helper reports an error; {error} is its message.
+#, python-brace-format
+msgid "Audio error: {error}"
+msgstr "Audiofehler: {error}"
+
+#. Translators: reported when the audio helper process died while streaming.
+msgid "Audio streaming stopped unexpectedly"
+msgstr "Die Audioübertragung wurde unerwartet beendet"
+
+#. Translators: reported when the local audio receiver could not be started.
+msgid "Could not start the audio receiver. See the NVDA log for details."
+msgstr "Der Audioempfänger konnte nicht gestartet werden. Details finden Sie im NVDA-Protokoll."
+
+#. Translators: question asked at NVDA startup when the .NET runtime for audio streaming is missing.
+msgid "remremote's audio streaming needs the .NET 10 Desktop Runtime, which is not installed on this computer. Do you want to install it now? If you choose no, you won't be asked at startup again, but audio streaming will offer the installation when used."
+msgstr "Die Audioübertragung von remremote benötigt die .NET 10 Desktop Runtime, die auf diesem Computer nicht installiert ist. Möchten Sie sie jetzt installieren? Wenn Sie Nein wählen, werden Sie beim Start nicht erneut gefragt; bei Verwendung der Audioübertragung wird die Installation aber wieder angeboten."
+
+#. Translators: title of the missing runtime question.
+msgid "Audio streaming component missing"
+msgstr "Komponente für die Audioübertragung fehlt"
+
+#. Translators: question asked when audio streaming failed because the .NET runtime is missing.
+msgid "Audio streaming needs the .NET 10 Desktop Runtime, which is not installed. Do you want to install it now?"
+msgstr "Die Audioübertragung benötigt die .NET 10 Desktop Runtime, die nicht installiert ist. Möchten Sie sie jetzt installieren?"
+
+#. Translators: reported when the runtime installation is still in progress.
+msgid "The .NET runtime installation is still running. Please wait."
+msgstr "Die Installation der .NET-Runtime läuft noch. Bitte warten."
+
+#. Translators: reported while the .NET runtime is being installed in the background.
+msgid "Installing the .NET 10 Desktop Runtime in the background. You may see a User Account Control prompt — please confirm it. You will be notified when the installation finishes."
+msgstr "Die .NET 10 Desktop Runtime wird im Hintergrund installiert. Möglicherweise erscheint eine Abfrage der Benutzerkontensteuerung — bitte bestätigen Sie diese. Sie werden benachrichtigt, sobald die Installation abgeschlossen ist."
+
+#. Translators: reported when the .NET runtime finished installing.
+msgid "The .NET 10 Desktop Runtime has been installed. You can use audio streaming now."
+msgstr "Die .NET 10 Desktop Runtime wurde installiert. Sie können die Audioübertragung jetzt verwenden."
+
+#. Translators: reported when the runtime install finished but couldn't be verified.
+msgid "The runtime installation finished. If audio streaming still fails, please restart the computer."
+msgstr "Die Installation der Runtime ist abgeschlossen. Falls die Audioübertragung weiterhin fehlschlägt, starten Sie bitte den Computer neu."
+
+#. Translators: reported when automatic runtime installation failed and the download page was opened instead.
+msgid "Automatic installation did not work. The .NET 10 Desktop Runtime download has been started in your browser — please run the downloaded installer manually."
+msgstr "Die automatische Installation hat nicht funktioniert. Der Download der .NET 10 Desktop Runtime wurde in Ihrem Browser gestartet — bitte führen Sie das heruntergeladene Installationsprogramm manuell aus."
+
+#. Translators: question asked before starting a control server, offering to forward the port automatically.
+#, python-brace-format
+msgid "remremote can try to automatically forward port {port} in your router using UPnP: TCP for the control connection and UDP for remote audio streaming. Do you want to do this now?"
+msgstr "remremote kann versuchen, Port {port} in Ihrem Router automatisch per UPnP freizugeben: TCP für die Steuerverbindung und UDP für die Audioübertragung. Möchten Sie das jetzt tun?"
+
+#. Translators: title of the automatic port forwarding question.
+msgid "Automatic port forwarding"
+msgstr "Automatische Portweiterleitung"
+
+#. Translators: question asked the first time the user hosts a control server, offering to add firewall exceptions.
+msgid "Since you are hosting a control server for the first time: should remremote add itself to the Windows Firewall exceptions, so that incoming control and audio connections are not blocked? This may trigger a User Account Control prompt which you will need to confirm."
+msgstr "Da Sie zum ersten Mal einen Kontrollserver hosten: Soll sich remremote zu den Ausnahmen der Windows-Firewall hinzufügen, damit eingehende Steuer- und Audioverbindungen nicht blockiert werden? Dies kann eine Abfrage der Benutzerkontensteuerung auslösen, die Sie bestätigen müssen."
+
+#. Translators: title of the firewall exception question.
+msgid "Windows Firewall"
+msgstr "Windows-Firewall"
+
+#. Translators: reported after requesting the firewall exceptions.
+msgid "Firewall exceptions requested. Please confirm the User Account Control prompt if it appears."
+msgstr "Firewall-Ausnahmen wurden angefordert. Bitte bestätigen Sie die Abfrage der Benutzerkontensteuerung, falls sie erscheint."
+
+#. Translators: reported when the firewall exceptions could not be added.
+msgid "Could not add the firewall exceptions. You can add NVDA and the audio helper to the Windows Firewall manually."
+msgstr "Die Firewall-Ausnahmen konnten nicht hinzugefügt werden. Sie können NVDA und den Audio-Helfer manuell zur Windows-Firewall hinzufügen."
+
+#. Translators: gesture description for the repair firewall exceptions script
+msgid "Adds or repairs the Windows Firewall exceptions for remremote"
+msgstr "Fügt die Ausnahmen für remremote in der Windows-Firewall hinzu oder repariert sie"
+
+#. Translators: Menu item in remremote submenu to create Windows Firewall rules for the control server hosted on this computer.
+msgid "Create firewall &rules for the control server (User Account Control may be required)"
+msgstr "Firewall-&Regeln für den Kontrollserver erstellen (möglicherweise ist die Benutzerkontensteuerung erforderlich)"
+
+#. Translators: description of the firewall rules menu item
+msgid "Allow incoming connections to the control server hosted on this computer through the Windows Firewall"
+msgstr "Eingehende Verbindungen zum auf diesem Computer gehosteten Kontrollserver in der Windows-Firewall zulassen"
+
+#. Translators: reported when firewall rules are requested while not hosting a control server.
+msgid "No control server is running on this computer."
+msgstr "Auf diesem Computer läuft kein Kontrollserver."
+
+#. Translators: Checkable menu item in remremote submenu to stream the remote computer's audio.
+msgid "Stream remote &audio"
+msgstr "Entfernten &Ton übertragen"
+
+#. Translators: description of the remote audio menu item
+msgid "Play the audio of the remote computer on this computer"
+msgstr "Den Ton des entfernten Computers auf diesem Computer wiedergeben"
+
+#. Translators: Checkable menu item in remremote submenu, on the controlled computer, to share its audio.
+msgid "Stream &audio to the controlling computer"
+msgstr "&Ton zum steuernden Computer übertragen"
+
+#. Translators: description of the audio menu item on the controlled computer.
+msgid "Play the audio of this computer on the controlling computer"
+msgstr "Den Ton dieses Computers auf dem steuernden Computer wiedergeben"
+
+#. Translators: Checkable menu item in remremote submenu to keep both clipboards synchronised.
+msgid "&Keep clipboard in sync"
+msgstr "Zwischenablage synchron &halten"
+
+#. Translators: description of the clipboard sync menu item
+msgid "Automatically keep the clipboards of both computers identical (text only)"
+msgstr "Die Zwischenablagen beider Computer automatisch identisch halten (nur Text)"
+
+#. Translators: gesture description for the clipboard sync toggle
+msgid "Turn synchronisation of both computers' clipboards on or off"
+msgstr "Die Synchronisierung der Zwischenablagen beider Computer ein- oder ausschalten"
+
+#. Translators: reported when clipboard sync has been turned on.
+msgid "Clipboard sync on"
+msgstr "Zwischenablage-Synchronisierung ein"
+
+#. Translators: reported when clipboard sync has been turned off.
+msgid "Clipboard sync off"
+msgstr "Zwischenablage-Synchronisierung aus"
+
+#. Translators: reported when the other computer turned clipboard sync on.
+msgid "Clipboard sync turned on by the other computer"
+msgstr "Zwischenablage-Synchronisierung vom anderen Computer eingeschaltet"
+
+#. Translators: reported when the other computer turned clipboard sync off.
+msgid "Clipboard sync turned off by the other computer"
+msgstr "Zwischenablage-Synchronisierung vom anderen Computer ausgeschaltet"
+
+#. Translators: reported when the clipboard could not be monitored.
+msgid "Could not monitor the clipboard on this computer."
+msgstr "Die Zwischenablage konnte auf diesem Computer nicht überwacht werden."
+
+#. Translators: reported when the control server could not be started; {port} is the port number.
+msgid ""
+"Could not start the control server on port {port}. Another program — or "
+"another copy of NVDA — may already be using it."
+msgstr ""
+"Der Kontrollserver konnte auf Port {port} nicht gestartet werden. "
+"Möglicherweise verwendet ihn bereits ein anderes Programm oder eine andere "
+"NVDA-Instanz."
+
+#. Translators: reported when the remote speech setting could not be sent to the controlling computer.
+msgid "Could not reach the controlling computer."
+msgstr "Der kontrollierende Computer konnte nicht erreicht werden."
+
+#. Translators: reported when the controlled computer turned on using its own synthesizer.
+msgid "Remote speech synthesizer turned on by the other computer"
+msgstr "Sprachausgabe des entfernten Computers vom anderen Computer eingeschaltet"
+
+#. Translators: reported when the controlled computer turned off using its own synthesizer.
+msgid "Remote speech synthesizer turned off by the other computer"
+msgstr "Sprachausgabe des entfernten Computers vom anderen Computer ausgeschaltet"
+
+#. Translators: reported when using the remote computer's own synthesizer is turned on.
+msgid "Remote speech synthesizer on"
+msgstr "Sprachausgabe des entfernten Computers ein"
+
+#. Translators: reported when using the remote computer's own synthesizer is turned off.
+msgid "Remote speech synthesizer off"
+msgstr "Sprachausgabe des entfernten Computers aus"
+
+#. Translators: reported when remote audio streaming started using the remote computer's own synthesizer.
+msgid "Remote audio on, using the remote computer's speech synthesizer"
+msgstr "Ton des entfernten Computers ein, mit dessen eigener Sprachausgabe"
+
+#. Translators: reported when the remote computer cannot use its own synthesizer for the stream.
+msgid "Remote audio on. The remote computer cannot use its own speech synthesizer, so its speech still arrives as text."
+msgstr "Ton des entfernten Computers ein. Der entfernte Computer kann seine eigene Sprachausgabe nicht verwenden, seine Sprache kommt weiterhin als Text an."
+
+#. Translators: reported on the controlled computer when it starts streaming with its own speech.
+msgid "Streaming audio to the controlling computer, including this computer's speech"
+msgstr "Ton wird zum kontrollierenden Computer übertragen, einschließlich der Sprachausgabe dieses Computers"
+
+#. Translators: Label of an edit field to enter a second password to exchange encrypted data.
+msgid "En&cryption password (optional):"
+msgstr "Vers&chlüsselungskennwort (optional):"
+
+#. Translators: A checkbox in add-on options dialog to use the remote computer's own synthesizer while its audio is streamed.
+msgid "Use the &speech synthesizer of the remote computer while its audio is streamed"
+msgstr "Bei Tonübertragung die &Sprachausgabe des entfernten Computers verwenden"
+
+#. Translators: gesture description for the remote speech synthesizer toggle
+msgid "Turn using the speech synthesizer of the remote computer during audio streaming on or off"
+msgstr "Verwendung der Sprachausgabe des entfernten Computers bei Tonübertragung ein- oder ausschalten"

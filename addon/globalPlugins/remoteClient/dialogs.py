@@ -262,8 +262,12 @@ class DirectConnectDialog(wx.Dialog):
 
 class OptionsDialog(SettingsPanel):
 
-	# Translators: title for the TeleNVDA settings category in NVDA settings dialog
-	title = _("TeleNVDA")
+	# Translators: title for the remremote settings category in NVDA settings dialog
+	title = _("remremote")
+
+	#: The panel currently on screen, or None. Lets the add-on refresh a checkbox that was
+	#: changed behind the dialog's back (by a gesture, or by the other computer).
+	active_panel = None
 
 	def makeSettings(self, sizer):
 		# Translators: A checkbox in add-on options dialog to set whether remote server is started when NVDA starts.
@@ -311,6 +315,9 @@ class OptionsDialog(SettingsPanel):
 		# Translators: A checkbox in add-on options dialog to set whether to mute remote speech when controlling the local machine.
 		self.mute_when_controlling_local_machine = wx.CheckBox(self, wx.ID_ANY, label=_("Mute remote speech when controlling local machine"))
 		sizer.Add(self.mute_when_controlling_local_machine)
+		# Translators: A checkbox in add-on options dialog to use the remote computer's own synthesizer while its audio is streamed.
+		self.use_remote_tts = wx.CheckBox(self, wx.ID_ANY, label=_("Use the &speech synthesizer of the remote computer while its audio is streamed"))
+		sizer.Add(self.use_remote_tts)
 		# Translators: A checkbox in add-on options dialog to set whether allow or block speech commands
 		self.speech_commands = wx.CheckBox(self, wx.ID_ANY, label=_("Process speech commands when controlling another computer"))
 		sizer.Add(self.speech_commands)
@@ -360,6 +367,10 @@ class OptionsDialog(SettingsPanel):
 		self.play_sounds.SetValue(config['ui']['play_sounds'])
 		self.alert_before_slave_disconnect.SetValue(config['ui']['alert_before_slave_disconnect'])
 		self.mute_when_controlling_local_machine.SetValue(config['ui']['mute_when_controlling_local_machine'])
+		self.use_remote_tts.SetValue(config['audio']['use_remote_tts'])
+		# The gesture can flip this setting while this panel is open — and it may be flipped
+		# by the other computer, too. Let the add-on find us so the checkbox stays truthful.
+		OptionsDialog.active_panel = self
 		self.speech_commands.SetValue(config['ui']['allow_speech_commands'])
 		self.motd_once.SetValue(config['ui']['display_motd_once'])
 		self.portcheck.SetValue(config['ui']['portcheck'])
@@ -377,10 +388,14 @@ class OptionsDialog(SettingsPanel):
 
 	def onPanelDeactivated(self):
 		NVDAConfig.conf.profiles[-1].name = self.originalProfileName
+		if OptionsDialog.active_panel is self:
+			OptionsDialog.active_panel = None
 		self.Hide()
 
 	def onDiscard(self):
 		NVDAConfig.conf.profiles[-1].name = self.originalProfileName
+		if OptionsDialog.active_panel is self:
+			OptionsDialog.active_panel = None
 
 	def onSave(self):
 		if not "{port}" in self.portcheck.GetValue():
@@ -422,17 +437,26 @@ class OptionsDialog(SettingsPanel):
 		config['ui']['play_sounds'] = self.play_sounds.GetValue()
 		config['ui']['alert_before_slave_disconnect'] = self.alert_before_slave_disconnect.GetValue()
 		config['ui']['mute_when_controlling_local_machine'] = self.mute_when_controlling_local_machine.GetValue()
+		remote_tts = self.use_remote_tts.GetValue()
+		remote_tts_changed = bool(config['audio']['use_remote_tts']) != bool(remote_tts)
+		config['audio']['use_remote_tts'] = remote_tts
 		config['ui']['allow_speech_commands'] = self.speech_commands.GetValue()
 		config['ui']['display_motd_once'] = self.motd_once.GetValue()
 		config['ui']['portcheck'] = self.portcheck.GetValue()
 		if not configuration.readonly:
 			config.write()
+		if remote_tts_changed:
+			# Tell the other computer and rebuild a running stream, exactly as the gesture
+			# would — the setting is meaningless unless both ends agree on it.
+			from . import client
+			if client is not None:
+				client.audio.on_remote_tts_setting_changed(remote_tts)
 
 class CertificateUnauthorizedDialog(wx.MessageDialog):
 
 	def __init__(self, parent, fingerprint=None):
 		# Translators: A title bar of a window presented when an attempt has been made to connect with a server with unauthorized certificate.
-		title=_("TeleNVDA Connection Security Warning")
+		title=_("remremote Connection Security Warning")
 		# Translators: A message of a window presented when an attempt has been made to connect with a server with unauthorized certificate.
 		message = _("Warning! The certificate of this server could not be verified.\nThis connection may not be secure. It is possible that someone is trying to overhear your communication.\nBefore continuing please make sure that the following server certificate fingerprint is a proper one.\nIf you have any questions, please contact the server administrator.\n\nServer SHA256 fingerprint: {fingerprint}\n\nDo you want to continue connecting?").format(fingerprint=fingerprint)
 		super().__init__(parent, caption=title, message=message, style=wx.YES_NO|wx.CANCEL|wx.CANCEL_DEFAULT|wx.CENTRE)

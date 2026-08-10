@@ -32,9 +32,15 @@ class Server:
 		self.server_socket = self.create_server_socket(
 			socket.AF_INET, socket.SOCK_STREAM, bind_addr=(bind_host, self.port)
 		)
-		self.server_socket6 = self.create_server_socket(
-			socket.AF_INET6, socket.SOCK_STREAM, bind_addr=(bind_host6, self.port)
-		)
+		try:
+			self.server_socket6 = self.create_server_socket(
+				socket.AF_INET6, socket.SOCK_STREAM, bind_addr=(bind_host6, self.port)
+			)
+		except OSError:
+			# IPv6 may be switched off, or the address family unavailable. That is no
+			# reason to refuse service over IPv4 — which is what everything here uses.
+			log.warning("Could not listen on IPv6; continuing with IPv4 only", exc_info=True)
+			self.server_socket6 = None
 		self.upnp = None
 		if UPNP:
 			self.upnp = miniupnpc.UPnP()
@@ -54,27 +60,42 @@ class Server:
 				self.upnp.discoverdelay = 200
 				self.upnp.discover()
 				self.upnp.selectigd()
-				self.upnp.addportmapping(self.port, "TCP", self.upnp.lanaddr, self.port, "TeleNVDA", "", 3600)
+				self.upnp.addportmapping(self.port, "TCP", self.upnp.lanaddr, self.port, "remremote", "", 3600)
 			except:
 				self.upnp = None
+			# The same port number is also used for UDP by the remote audio stream, so open it
+			# alongside the TCP mapping. Its failure must not tear down the TCP mapping — audio
+			# is an optional extra on top of the control connection.
+			if self.upnp:
+				try:
+					self.upnp.addportmapping(self.port, "UDP", self.upnp.lanaddr, self.port, "remremote audio", "", 3600)
+				except:
+					log.warning("UPnP: UDP port mapping failed; remote audio may need manual port forwarding")
 		self.last_ping_time = time.monotonic()
 		log.info("TeleNVDA direct connection server started")
+		listening_sockets = [s for s in (self.server_socket, self.server_socket6) if s is not None]
 		while self.running:
 			r, w, e = select.select(
-				self.client_sockets + [self.server_socket, self.server_socket6], [], self.client_sockets, 60
+				self.client_sockets + listening_sockets, [], self.client_sockets, 60
 			)
 			if not self.running:
 				break
 			for sock in r:
-				if sock is self.server_socket or sock is self.server_socket6:
+				if sock in listening_sockets:
 					self.accept_new_connection(sock)
 					continue
 				self.clients[sock].handle_data()
 			if time.monotonic() - self.last_ping_time >= self.PING_TIME:
 				if self.upnp:
-					self.upnp.addportmapping(
-						self.port, "TCP", self.upnp.lanaddr, self.port, "TeleNVDA", "", 3600
-					)
+					try:
+						self.upnp.addportmapping(
+							self.port, "TCP", self.upnp.lanaddr, self.port, "remremote", "", 3600
+						)
+						self.upnp.addportmapping(
+							self.port, "UDP", self.upnp.lanaddr, self.port, "remremote audio", "", 3600
+						)
+					except:
+						log.warning("UPnP: periodic port mapping refresh failed")
 				for client in self.clients.values():
 					if client.authenticated:
 						client.send(type="ping")
@@ -124,9 +145,17 @@ class Server:
 	def close(self):
 		self.running = False
 		self.server_socket.close()
-		self.server_socket6.close()
+		if self.server_socket6 is not None:
+			self.server_socket6.close()
 		if self.upnp:
-			self.upnp.deleteportmapping(self.port, "TCP")
+			try:
+				self.upnp.deleteportmapping(self.port, "TCP")
+			except:
+				pass
+			try:
+				self.upnp.deleteportmapping(self.port, "UDP")
+			except:
+				pass
 		log.info("TeleNVDA direct connection server stopped")
 
 
