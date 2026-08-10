@@ -1,0 +1,444 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "remremote": {},
+    "The server is not compatible with this version of remremote.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Der Server ist mit dieser Version von remremote nicht kompatibel." } }
+      }
+    },
+    "Remote speech synthesizer turned on by the other computer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernte Sprachausgabe vom anderen Computer eingeschaltet" } }
+      }
+    },
+    "Remote speech synthesizer turned off by the other computer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernte Sprachausgabe vom anderen Computer ausgeschaltet" } }
+      }
+    },
+    "Remote speech synthesizer on": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernte Sprachausgabe ein" } }
+      }
+    },
+    "Remote speech synthesizer off": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernte Sprachausgabe aus" } }
+      }
+    },
+    "Not connected.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Nicht verbunden." } }
+      }
+    },
+    "Requesting remote audio...": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio wird angefordert..." } }
+      }
+    },
+    "No response. The remote computer may not support audio streaming (remremote required on both ends).": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Keine Antwort. Der entfernte Computer unterstützt Audio-Streaming möglicherweise nicht (remremote wird auf beiden Seiten benötigt)." } }
+      }
+    },
+    "Remote audio off": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio aus" } }
+      }
+    },
+    "Could not start the audio receiver.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Der Audio-Empfänger konnte nicht gestartet werden." } }
+      }
+    },
+    "Audio error: the encryption passwords do not match.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Audio-Fehler: Die Verschlüsselungspasswörter stimmen nicht überein." } }
+      }
+    },
+    "Remote audio on, using the remote computer's speech synthesizer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio ein, mit der Sprachausgabe des entfernten Computers" } }
+      }
+    },
+    "Remote audio on. The remote computer cannot use its own speech synthesizer, so its speech still arrives as text.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio ein. Der entfernte Computer kann seine eigene Sprachausgabe nicht verwenden, seine Sprache kommt weiterhin als Text an." } }
+      }
+    },
+    "Remote audio on": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio ein" } }
+      }
+    },
+    "The remote computer stopped sharing its audio": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Der entfernte Computer hat die Audio-Übertragung beendet" } }
+      }
+    },
+    "Audio streaming is not available over relay connections yet. Use a direct connection (control server).": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Audio-Streaming ist über Relay-Verbindungen noch nicht verfügbar. Verwenden Sie eine Direktverbindung (Kontrollserver)." } }
+      }
+    },
+    "The remote computer cannot stream audio: the .NET 10 Desktop Runtime is missing there.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Der entfernte Computer kann kein Audio streamen: Dort fehlt die .NET 10 Desktop Runtime." } }
+      }
+    },
+    "The remote computer could not start audio streaming (%@).": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Der entfernte Computer konnte das Audio-Streaming nicht starten (%@)." } }
+      }
+    },
+    "Clipboard updated": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage aktualisiert" } }
+      }
+    },
+    "The clipboard contains no text.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Die Zwischenablage enthält keinen Text." } }
+      }
+    },
+    "Clipboard pushed": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage übertragen" } }
+      }
+    },
+    "Clipboard sync turned on by the other computer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage-Synchronisierung vom anderen Computer eingeschaltet" } }
+      }
+    },
+    "Clipboard sync on": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage-Synchronisierung ein" } }
+      }
+    },
+    "Clipboard sync turned off by the other computer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage-Synchronisierung vom anderen Computer ausgeschaltet" } }
+      }
+    },
+    "Clipboard sync off": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage-Synchronisierung aus" } }
+      }
+    },
+    "The key for this computer could not be read from the keychain.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Der Schlüssel für diesen Computer konnte nicht aus dem Schlüsselbund gelesen werden." } }
+      }
+    },
+    "Disconnected": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbindung getrennt" } }
+      }
+    },
+    "Connected!": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbunden!" } }
+      }
+    },
+    "remremote needs accessibility permission to capture the keyboard. Grant it in System Settings > Privacy & Security > Accessibility, then reconnect.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "remremote benötigt die Bedienungshilfen-Berechtigung, um die Tastatur zu erfassen. Erteilen Sie sie unter Systemeinstellungen > Datenschutz & Sicherheit > Bedienungshilfen und verbinden Sie sich erneut." } }
+      }
+    },
+    "Connection failed: %@": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbindung fehlgeschlagen: %@" } }
+      }
+    },
+    "Connection interrupted": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbindung unterbrochen" } }
+      }
+    },
+    "unknown": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "unbekannt" } }
+      }
+    },
+    "Remote NVDA not connected.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes NVDA nicht verbunden." } }
+      }
+    },
+    "Controlling remote machine.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernter Computer wird gesteuert." } }
+      }
+    },
+    "Controlling local machine.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Lokaler Computer wird gesteuert." } }
+      }
+    },
+    "Toggle remote audio": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio umschalten" } }
+      }
+    },
+    "Toggle clipboard sync": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage-Synchronisierung umschalten" } }
+      }
+    },
+    "Push clipboard": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage übertragen" } }
+      }
+    },
+    "Toggle remote speech synthesizer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernte Sprachausgabe umschalten" } }
+      }
+    },
+    "Disconnect": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbindung trennen" } }
+      }
+    },
+    "Connection security warning": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Sicherheitswarnung zur Verbindung" } }
+      }
+    },
+    "Connect": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbinden" } }
+      }
+    },
+    "Connect and do not ask again for this server": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbinden und für diesen Server nicht erneut fragen" } }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Abbrechen" } }
+      }
+    },
+    "The server's certificate could not be verified. Its SHA-256 fingerprint is:\n%@": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Das Zertifikat des Servers konnte nicht überprüft werden. Sein SHA-256-Fingerabdruck lautet:\n%@" } }
+      }
+    },
+    "Message of the Day": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Nachricht des Tages" } }
+      }
+    },
+    "OK": {},
+    "Known computers": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Bekannte Computer" } }
+      }
+    },
+    "Connect to selected computer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Mit ausgewähltem Computer verbinden" } }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernen" } }
+      }
+    },
+    "New connection": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Neue Verbindung" } }
+      }
+    },
+    "Host (host or host:port)": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Host (Host oder Host:Port)" } }
+      }
+    },
+    "Key": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Schlüssel" } }
+      }
+    },
+    "Encryption password (optional)": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verschlüsselungspasswort (optional)" } }
+      }
+    },
+    "Save this computer in the keychain": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Diesen Computer im Schlüsselbund speichern" } }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Name" } }
+      }
+    },
+    "Not connected": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Nicht verbunden" } }
+      }
+    },
+    "Connecting…": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbinden…" } }
+      }
+    },
+    "Connected to the server — waiting for the remote computer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Mit dem Server verbunden — warte auf den entfernten Computer" } }
+      }
+    },
+    "Controlling the remote computer — press F10 to stop": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Der entfernte Computer wird gesteuert — F10 beendet die Steuerung" } }
+      }
+    },
+    "Connected — press F10 to take control": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbunden — F10 übernimmt die Steuerung" } }
+      }
+    },
+    "Remote audio: off": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio: aus" } }
+      }
+    },
+    "Remote audio: requested…": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio: angefordert…" } }
+      }
+    },
+    "Remote audio: on (remote speech synthesizer)": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio: ein (entfernte Sprachausgabe)" } }
+      }
+    },
+    "Remote audio: on": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio: ein" } }
+      }
+    },
+    "Clipboard sync: on": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage-Synchronisierung: ein" } }
+      }
+    },
+    "Clipboard sync: off": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zwischenablage-Synchronisierung: aus" } }
+      }
+    },
+    "Session": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Sitzung" } }
+      }
+    },
+    "Keyboard": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Tastatur" } }
+      }
+    },
+    "Use Command+Option as the NVDA key (Insert)": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Befehl+Wahl als NVDA-Taste (Einfügen) verwenden" } }
+      }
+    },
+    "Most Mac keyboards have no Insert key. With this enabled, pressing Command and Option together acts as the NVDA key while controlling the remote computer.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Die meisten Mac-Tastaturen haben keine Einfügen-Taste. Ist diese Option aktiviert, wirkt das gleichzeitige Drücken von Befehl und Wahl beim Steuern des entfernten Computers als NVDA-Taste." } }
+      }
+    },
+    "Grace window before a single key becomes Alt or Windows": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Wartezeit, bevor eine einzelne Taste zu Alt oder Windows wird" } }
+      }
+    },
+    "Grace window": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Wartezeit" } }
+      }
+    },
+    "Command and Option become the NVDA key only when pressed together within this window. Held or tapped on its own, a key becomes just Alt or Windows once the window passes.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Befehl und Wahl werden nur dann zur NVDA-Taste, wenn sie innerhalb dieser Zeit gemeinsam gedrückt werden. Wird eine der Tasten allein gehalten oder getippt, wird sie nach Ablauf der Zeit zu Alt bzw. Windows." } }
+      }
+    },
+    "Warning: with this turned off, single presses of the Alt or Windows key may not work as expected while controlling the remote computer.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Warnung: Ist dies deaktiviert, funktionieren einzelne Tastendrücke der Alt- oder Windows-Taste beim Steuern des entfernten Computers möglicherweise nicht wie erwartet." } }
+      }
+    },
+    "Speech output": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Sprachausgabe" } }
+      }
+    },
+    "Speak remote text with": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entfernten Text sprechen mit" } }
+      }
+    },
+    "VoiceOver": {},
+    "A speech synthesizer voice": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Einer TTS-Stimme" } }
+      }
+    },
+    "Warning: VoiceOver does not honour interrupts, nor pitch changes sent by the remote computer.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Warnung: VoiceOver respektiert keine Unterbrechungen und keine Tonhöhenänderungen des entfernten Computers." } }
+      }
+    },
+    "Voice": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Stimme" } }
+      }
+    },
+    "System default": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Systemstandard" } }
+      }
+    },
+    "Rate": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Geschwindigkeit" } }
+      }
+    },
+    "Pitch": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Tonhöhe" } }
+      }
+    },
+    "Remote audio": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Entferntes Audio" } }
+      }
+    },
+    "Use the speech synthesizer of the remote computer while its audio is streamed": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Die Sprachausgabe des entfernten Computers verwenden, während sein Audio übertragen wird" } }
+      }
+    },
+    "While audio is streaming, the remote computer keeps its own voice in the stream instead of sending its speech as text.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Während der Audio-Übertragung bleibt die eigene Stimme des entfernten Computers im Stream, statt seine Sprache als Text zu senden." } }
+      }
+    },
+    "Security": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Sicherheit" } }
+      }
+    },
+    "Delete all trusted fingerprints": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Alle vertrauenswürdigen Fingerabdrücke löschen" } }
+      }
+    }
+  }
+}

@@ -33,6 +33,13 @@ people; see [Credits and licence](#credits-and-licence).
 
 See [changelog.md](changelog.md) for the full list.
 
+## macOS app
+
+A native Mac app that controls a computer running this add-on — including the audio
+stream, clipboard sync and the remote speech synthesizer option — lives in
+[`mac/`](mac/). See [`mac/README.md`](mac/README.md) for features, key mapping
+(F10 to take control, Command+Option as the NVDA key) and build instructions.
+
 ## Requirements
 
 * Windows, and NVDA 2019.3 or newer, on both computers.

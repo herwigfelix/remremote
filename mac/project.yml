@@ -1,0 +1,71 @@
+name: remremote
+options:
+  bundleIdPrefix: org.remremote
+  deploymentTarget:
+    macOS: "14.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+
+packages:
+  swift-opus:
+    url: https://github.com/alta/swift-opus.git
+    exactVersion: 0.0.2
+  CryptoSwift:
+    url: https://github.com/krzyzanowskim/CryptoSwift.git
+    from: 1.8.0
+
+targets:
+  RemRemote:
+    type: application
+    platform: macOS
+    sources:
+      - path: RemRemote
+    dependencies:
+      - package: swift-opus
+        product: Opus
+      - package: CryptoSwift
+        product: CryptoSwift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.remremote.mac
+        PRODUCT_NAME: remremote
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: remremote
+        INFOPLIST_KEY_NSHumanReadableCopyright: "GPL v2 — remremote contributors"
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        SWIFT_VERSION: "5.0"
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        DEAD_CODE_STRIPPING: YES
+
+  RemRemoteTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: RemRemote
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.remremote.mac.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/remremote.app/Contents/MacOS/remremote"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  RemRemote:
+    build:
+      targets:
+        RemRemote: all
+        RemRemoteTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - RemRemoteTests

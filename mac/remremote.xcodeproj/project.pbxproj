@@ -1,0 +1,705 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04191439229FA600F96035EE /* LiveRelayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B5C39211DF5DD5391DCF24 /* LiveRelayTests.swift */; };
+		0AB554EF3C2B7D228085F392 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 03DB5826BC08C8578A5270B3 /* Localizable.xcstrings */; };
+		18F70397DE9965D1976244DA /* RemPacket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE3512BBB525103054EA2F7 /* RemPacket.swift */; };
+		1F858C864330ADAFA1F478F7 /* RemoteSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FA31CC390AE79461F053F9A /* RemoteSession.swift */; };
+		21C412CDCD451B2CC0837E62 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA98E69F49C1269DBBE141D9 /* KeychainStore.swift */; };
+		281F185E65D023BA6C4017D5 /* KeyMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4222BCF97858F761006DA5F7 /* KeyMap.swift */; };
+		2F2B0D4BC9A866048E71AE1B /* DirectTTSSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D4BF7DDE44A64BA0FF9CAA /* DirectTTSSpeech.swift */; };
+		37ECC816C62D96E6EC5368F8 /* TonePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8109892D58CBFB2C49AD272 /* TonePlayer.swift */; };
+		38CC51540BDC6AAD00B914CC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98523EC02BA9630CE7548758 /* SettingsView.swift */; };
+		527AF93E61F5524EFE99AE93 /* RemRemoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C441719A6D50A96B63566B /* RemRemoteApp.swift */; };
+		5A6B673BD22502EF08E44210 /* ControlTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 882D8FA43F193AFF1302651F /* ControlTransport.swift */; };
+		5C80318EEEB665FD1CFD3C1F /* receive_clipboard.wav in Resources */ = {isa = PBXBuildFile; fileRef = E1B276516970C38FBC4E085B /* receive_clipboard.wav */; };
+		606D299DD08BDBB04E6A622A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971B3C9D6B86E3CD0A53F79F /* AppSettings.swift */; };
+		652DB280F72EE2CFA43ED1FB /* SpeechSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDF497FA7865BAAB9702E89 /* SpeechSequence.swift */; };
+		680C57232A496E27FBE30D36 /* LayoutMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6526A87B432F6D63D125581 /* LayoutMapper.swift */; };
+		6A5670F776AB0A2472DDA7E6 /* Opus in Frameworks */ = {isa = PBXBuildFile; productRef = 4680969DD23DE3760B352CC3 /* Opus */; };
+		6D38462E56DB0015A7E81A87 /* CryptoSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7A72E57F89346F75EEEE0B72 /* CryptoSwift */; };
+		72010E95C28DE8C8A9D54B5E /* MessageCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55E30DC3973AE15ABF06A80 /* MessageCrypto.swift */; };
+		7F3EA41C39A3BBE9CEBE40B4 /* ClipboardSyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF448B81309F5F7255D1F397 /* ClipboardSyncController.swift */; };
+		854639B666A867022FB5CBED /* RemSoundReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18BA152BE40F986E9DD0EBBF /* RemSoundReceiver.swift */; };
+		8F367AE1896A93DC50CD044E /* mini_relay.py in Resources */ = {isa = PBXBuildFile; fileRef = DFB8B6568DC20B67EBC200F2 /* mini_relay.py */; };
+		8FDDEBFF4A7D35FA257DA684 /* KeyCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A638EA7E5B66431EB5231A4 /* KeyCapture.swift */; };
+		A124D5ABB78125CD33DE9261 /* OpusStreamDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 938359D01AE22DFD620701E4 /* OpusStreamDecoder.swift */; };
+		A5836BC9A68702F24FF39F58 /* controlling.wav in Resources */ = {isa = PBXBuildFile; fileRef = 93FF0B272964ED59763C1635 /* controlling.wav */; };
+		A936847A2AF5B1709DC029E3 /* AudioPlayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D915F7D62B691D7C3C71CF /* AudioPlayout.swift */; };
+		B1FC00A31D92A50C0459CAFE /* AudioStreamController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33D6DE956BFD769F4E0FFAD2 /* AudioStreamController.swift */; };
+		C41FA51753162377DA88180A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BBF18FC28D3438D9E6FF4 /* ContentView.swift */; };
+		C4C8460E8BC5DC3C20047A82 /* InteropTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22A9AEF7FC0E94946BB73C7F /* InteropTests.swift */; };
+		C607CCCD1DE99D945EAD1D1E /* CuePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B590DA1548DEE10A5627E92 /* CuePlayer.swift */; };
+		C6B6070CA4469DE1AE2F3673 /* ChordProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C57EED1C840407D95159E6 /* ChordProcessor.swift */; };
+		CD9A3611EEB87E2549CDEA64 /* disconnected.wav in Resources */ = {isa = PBXBuildFile; fileRef = 45CD27D9F7B5E9AF7D9CC819 /* disconnected.wav */; };
+		CEF4F5BF409A577B0784661A /* RemSoundCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4125BECAB6A47371516F84D /* RemSoundCrypto.swift */; };
+		D613E443BBF3EC46F57025C2 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5027715A6DCFD543EF3EDE9 /* AppState.swift */; };
+		DA039A63E555458BCB89867E /* SavedComputers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED161C923134E541241FE70 /* SavedComputers.swift */; };
+		DDDD60A7465F05545CC691F5 /* controlled.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7A149CC2532C3C0DABA60E09 /* controlled.wav */; };
+		E1DE4E025F7D28EC47B63A6D /* Push_Clipboard.wav in Resources */ = {isa = PBXBuildFile; fileRef = 06D3F28C2D57448EF6C313F6 /* Push_Clipboard.wav */; };
+		EC50A291845A339E31A42406 /* connected.wav in Resources */ = {isa = PBXBuildFile; fileRef = CD4CA0EDEC3DD4434CC49C3F /* connected.wav */; };
+		F8DF7307029EE226155663A6 /* VoiceOverSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8F91833FF2D56F112B6219 /* VoiceOverSpeech.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A500487CA9EABCD007EFECB8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0D7CBBBC8D54CBE142E239C0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 78D3C26C8CB03A97DEF54CCF;
+			remoteInfo = RemRemote;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		03DB5826BC08C8578A5270B3 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		06D3F28C2D57448EF6C313F6 /* Push_Clipboard.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Push_Clipboard.wav; sourceTree = "<group>"; };
+		0B590DA1548DEE10A5627E92 /* CuePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuePlayer.swift; sourceTree = "<group>"; };
+		18BA152BE40F986E9DD0EBBF /* RemSoundReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemSoundReceiver.swift; sourceTree = "<group>"; };
+		1A638EA7E5B66431EB5231A4 /* KeyCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCapture.swift; sourceTree = "<group>"; };
+		22A9AEF7FC0E94946BB73C7F /* InteropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteropTests.swift; sourceTree = "<group>"; };
+		2BDF497FA7865BAAB9702E89 /* SpeechSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSequence.swift; sourceTree = "<group>"; };
+		318BBF18FC28D3438D9E6FF4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		33D6DE956BFD769F4E0FFAD2 /* AudioStreamController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioStreamController.swift; sourceTree = "<group>"; };
+		37C441719A6D50A96B63566B /* RemRemoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemRemoteApp.swift; sourceTree = "<group>"; };
+		3ED161C923134E541241FE70 /* SavedComputers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedComputers.swift; sourceTree = "<group>"; };
+		4222BCF97858F761006DA5F7 /* KeyMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyMap.swift; sourceTree = "<group>"; };
+		45CD27D9F7B5E9AF7D9CC819 /* disconnected.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = disconnected.wav; sourceTree = "<group>"; };
+		5EE3512BBB525103054EA2F7 /* RemPacket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemPacket.swift; sourceTree = "<group>"; };
+		5FA31CC390AE79461F053F9A /* RemoteSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSession.swift; sourceTree = "<group>"; };
+		7A149CC2532C3C0DABA60E09 /* controlled.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = controlled.wav; sourceTree = "<group>"; };
+		882D8FA43F193AFF1302651F /* ControlTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTransport.swift; sourceTree = "<group>"; };
+		938359D01AE22DFD620701E4 /* OpusStreamDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpusStreamDecoder.swift; sourceTree = "<group>"; };
+		93FF0B272964ED59763C1635 /* controlling.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = controlling.wav; sourceTree = "<group>"; };
+		96D915F7D62B691D7C3C71CF /* AudioPlayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayout.swift; sourceTree = "<group>"; };
+		971B3C9D6B86E3CD0A53F79F /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		98523EC02BA9630CE7548758 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A6B5C39211DF5DD5391DCF24 /* LiveRelayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRelayTests.swift; sourceTree = "<group>"; };
+		B4125BECAB6A47371516F84D /* RemSoundCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemSoundCrypto.swift; sourceTree = "<group>"; };
+		BB8F91833FF2D56F112B6219 /* VoiceOverSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceOverSpeech.swift; sourceTree = "<group>"; };
+		CD4CA0EDEC3DD4434CC49C3F /* connected.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = connected.wav; sourceTree = "<group>"; };
+		CDF8279A2D65A78C031069A7 /* RemRemote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RemRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5027715A6DCFD543EF3EDE9 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		D55E30DC3973AE15ABF06A80 /* MessageCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageCrypto.swift; sourceTree = "<group>"; };
+		D8FE899C6C1C15BB95774FD0 /* RemRemoteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemRemoteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFB8B6568DC20B67EBC200F2 /* mini_relay.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = mini_relay.py; sourceTree = "<group>"; };
+		E1B276516970C38FBC4E085B /* receive_clipboard.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = receive_clipboard.wav; sourceTree = "<group>"; };
+		E4D4BF7DDE44A64BA0FF9CAA /* DirectTTSSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectTTSSpeech.swift; sourceTree = "<group>"; };
+		EA98E69F49C1269DBBE141D9 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		EF448B81309F5F7255D1F397 /* ClipboardSyncController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSyncController.swift; sourceTree = "<group>"; };
+		F3C57EED1C840407D95159E6 /* ChordProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordProcessor.swift; sourceTree = "<group>"; };
+		F6526A87B432F6D63D125581 /* LayoutMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMapper.swift; sourceTree = "<group>"; };
+		F8109892D58CBFB2C49AD272 /* TonePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonePlayer.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3725A586048732F484877931 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6A5670F776AB0A2472DDA7E6 /* Opus in Frameworks */,
+				6D38462E56DB0015A7E81A87 /* CryptoSwift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0F96ADC0A405C3C457C7E705 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D5027715A6DCFD543EF3EDE9 /* AppState.swift */,
+				37C441719A6D50A96B63566B /* RemRemoteApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		18054221DB94BFF365FDAFD6 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				318BBF18FC28D3438D9E6FF4 /* ContentView.swift */,
+				98523EC02BA9630CE7548758 /* SettingsView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		1FA9730C76AAA4B8927E6D32 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				96D915F7D62B691D7C3C71CF /* AudioPlayout.swift */,
+				33D6DE956BFD769F4E0FFAD2 /* AudioStreamController.swift */,
+				938359D01AE22DFD620701E4 /* OpusStreamDecoder.swift */,
+				5EE3512BBB525103054EA2F7 /* RemPacket.swift */,
+				B4125BECAB6A47371516F84D /* RemSoundCrypto.swift */,
+				18BA152BE40F986E9DD0EBBF /* RemSoundReceiver.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		23B7AF5A5AF1993CC07CCBC6 = {
+			isa = PBXGroup;
+			children = (
+				CBDB77620C79997D4BAA2DF7 /* RemRemote */,
+				CFDE07F439D368A1A83CE41B /* Tests */,
+				8F2F1A15631AE6FAEA7D691C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		61A9A799E866D30A57001804 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				971B3C9D6B86E3CD0A53F79F /* AppSettings.swift */,
+				EA98E69F49C1269DBBE141D9 /* KeychainStore.swift */,
+				3ED161C923134E541241FE70 /* SavedComputers.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		65E13B431F064610F34C6BD9 /* Speech */ = {
+			isa = PBXGroup;
+			children = (
+				0B590DA1548DEE10A5627E92 /* CuePlayer.swift */,
+				E4D4BF7DDE44A64BA0FF9CAA /* DirectTTSSpeech.swift */,
+				2BDF497FA7865BAAB9702E89 /* SpeechSequence.swift */,
+				F8109892D58CBFB2C49AD272 /* TonePlayer.swift */,
+				BB8F91833FF2D56F112B6219 /* VoiceOverSpeech.swift */,
+			);
+			path = Speech;
+			sourceTree = "<group>";
+		};
+		752E6B44AA80AE6CA918EA6D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				03DB5826BC08C8578A5270B3 /* Localizable.xcstrings */,
+				C7086B0681133A4BE7C21839 /* Sounds */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		761EDFEDAEB2E082E6B6E225 /* Input */ = {
+			isa = PBXGroup;
+			children = (
+				F3C57EED1C840407D95159E6 /* ChordProcessor.swift */,
+				1A638EA7E5B66431EB5231A4 /* KeyCapture.swift */,
+				4222BCF97858F761006DA5F7 /* KeyMap.swift */,
+				F6526A87B432F6D63D125581 /* LayoutMapper.swift */,
+			);
+			path = Input;
+			sourceTree = "<group>";
+		};
+		8F2F1A15631AE6FAEA7D691C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CDF8279A2D65A78C031069A7 /* RemRemote.app */,
+				D8FE899C6C1C15BB95774FD0 /* RemRemoteTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		99EECE9C1891B914EC1E7731 /* Protocol */ = {
+			isa = PBXGroup;
+			children = (
+				882D8FA43F193AFF1302651F /* ControlTransport.swift */,
+				D55E30DC3973AE15ABF06A80 /* MessageCrypto.swift */,
+				5FA31CC390AE79461F053F9A /* RemoteSession.swift */,
+			);
+			path = Protocol;
+			sourceTree = "<group>";
+		};
+		A16F03163F39BAF06A09F32D /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				0F96ADC0A405C3C457C7E705 /* App */,
+				1FA9730C76AAA4B8927E6D32 /* Audio */,
+				F32226EA5A832D916BD2570D /* Clipboard */,
+				761EDFEDAEB2E082E6B6E225 /* Input */,
+				99EECE9C1891B914EC1E7731 /* Protocol */,
+				65E13B431F064610F34C6BD9 /* Speech */,
+				61A9A799E866D30A57001804 /* Storage */,
+				18054221DB94BFF365FDAFD6 /* UI */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		C7086B0681133A4BE7C21839 /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				CD4CA0EDEC3DD4434CC49C3F /* connected.wav */,
+				7A149CC2532C3C0DABA60E09 /* controlled.wav */,
+				93FF0B272964ED59763C1635 /* controlling.wav */,
+				45CD27D9F7B5E9AF7D9CC819 /* disconnected.wav */,
+				06D3F28C2D57448EF6C313F6 /* Push_Clipboard.wav */,
+				E1B276516970C38FBC4E085B /* receive_clipboard.wav */,
+			);
+			path = Sounds;
+			sourceTree = "<group>";
+		};
+		CBDB77620C79997D4BAA2DF7 /* RemRemote */ = {
+			isa = PBXGroup;
+			children = (
+				752E6B44AA80AE6CA918EA6D /* Resources */,
+				A16F03163F39BAF06A09F32D /* Sources */,
+			);
+			path = RemRemote;
+			sourceTree = "<group>";
+		};
+		CFDE07F439D368A1A83CE41B /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				22A9AEF7FC0E94946BB73C7F /* InteropTests.swift */,
+				A6B5C39211DF5DD5391DCF24 /* LiveRelayTests.swift */,
+				DFB8B6568DC20B67EBC200F2 /* mini_relay.py */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		F32226EA5A832D916BD2570D /* Clipboard */ = {
+			isa = PBXGroup;
+			children = (
+				EF448B81309F5F7255D1F397 /* ClipboardSyncController.swift */,
+			);
+			path = Clipboard;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		462FEE8707996FB63E892A54 /* RemRemoteTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B062EC05335814F33779EE1A /* Build configuration list for PBXNativeTarget "RemRemoteTests" */;
+			buildPhases = (
+				3628418519F2A8DE2B5D34B6 /* Sources */,
+				A57B6FF6838FEBEC53DFDC0E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				56883D0939B6E823693F029B /* PBXTargetDependency */,
+			);
+			name = RemRemoteTests;
+			packageProductDependencies = (
+			);
+			productName = RemRemoteTests;
+			productReference = D8FE899C6C1C15BB95774FD0 /* RemRemoteTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		78D3C26C8CB03A97DEF54CCF /* RemRemote */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE8DEF8FC755F46020BBC295 /* Build configuration list for PBXNativeTarget "RemRemote" */;
+			buildPhases = (
+				10283F7B2EC81460FB301D7E /* Sources */,
+				DBFF595E976FB7D586E9321E /* Resources */,
+				3725A586048732F484877931 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RemRemote;
+			packageProductDependencies = (
+				4680969DD23DE3760B352CC3 /* Opus */,
+				7A72E57F89346F75EEEE0B72 /* CryptoSwift */,
+			);
+			productName = RemRemote;
+			productReference = CDF8279A2D65A78C031069A7 /* RemRemote.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0D7CBBBC8D54CBE142E239C0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					78D3C26C8CB03A97DEF54CCF = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 6C39F0D6EC8F2E435BAB6F41 /* Build configuration list for PBXProject "remremote" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				de,
+				en,
+			);
+			mainGroup = 23B7AF5A5AF1993CC07CCBC6;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7D12C96C5A946377074A31B8 /* XCRemoteSwiftPackageReference "CryptoSwift" */,
+				B781D2A9F698F6A75B327E02 /* XCRemoteSwiftPackageReference "swift-opus" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8F2F1A15631AE6FAEA7D691C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				78D3C26C8CB03A97DEF54CCF /* RemRemote */,
+				462FEE8707996FB63E892A54 /* RemRemoteTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A57B6FF6838FEBEC53DFDC0E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F367AE1896A93DC50CD044E /* mini_relay.py in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DBFF595E976FB7D586E9321E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0AB554EF3C2B7D228085F392 /* Localizable.xcstrings in Resources */,
+				E1DE4E025F7D28EC47B63A6D /* Push_Clipboard.wav in Resources */,
+				EC50A291845A339E31A42406 /* connected.wav in Resources */,
+				DDDD60A7465F05545CC691F5 /* controlled.wav in Resources */,
+				A5836BC9A68702F24FF39F58 /* controlling.wav in Resources */,
+				CD9A3611EEB87E2549CDEA64 /* disconnected.wav in Resources */,
+				5C80318EEEB665FD1CFD3C1F /* receive_clipboard.wav in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		10283F7B2EC81460FB301D7E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				606D299DD08BDBB04E6A622A /* AppSettings.swift in Sources */,
+				D613E443BBF3EC46F57025C2 /* AppState.swift in Sources */,
+				A936847A2AF5B1709DC029E3 /* AudioPlayout.swift in Sources */,
+				B1FC00A31D92A50C0459CAFE /* AudioStreamController.swift in Sources */,
+				C6B6070CA4469DE1AE2F3673 /* ChordProcessor.swift in Sources */,
+				7F3EA41C39A3BBE9CEBE40B4 /* ClipboardSyncController.swift in Sources */,
+				C41FA51753162377DA88180A /* ContentView.swift in Sources */,
+				5A6B673BD22502EF08E44210 /* ControlTransport.swift in Sources */,
+				C607CCCD1DE99D945EAD1D1E /* CuePlayer.swift in Sources */,
+				2F2B0D4BC9A866048E71AE1B /* DirectTTSSpeech.swift in Sources */,
+				8FDDEBFF4A7D35FA257DA684 /* KeyCapture.swift in Sources */,
+				281F185E65D023BA6C4017D5 /* KeyMap.swift in Sources */,
+				21C412CDCD451B2CC0837E62 /* KeychainStore.swift in Sources */,
+				680C57232A496E27FBE30D36 /* LayoutMapper.swift in Sources */,
+				72010E95C28DE8C8A9D54B5E /* MessageCrypto.swift in Sources */,
+				A124D5ABB78125CD33DE9261 /* OpusStreamDecoder.swift in Sources */,
+				18F70397DE9965D1976244DA /* RemPacket.swift in Sources */,
+				527AF93E61F5524EFE99AE93 /* RemRemoteApp.swift in Sources */,
+				CEF4F5BF409A577B0784661A /* RemSoundCrypto.swift in Sources */,
+				854639B666A867022FB5CBED /* RemSoundReceiver.swift in Sources */,
+				1F858C864330ADAFA1F478F7 /* RemoteSession.swift in Sources */,
+				DA039A63E555458BCB89867E /* SavedComputers.swift in Sources */,
+				38CC51540BDC6AAD00B914CC /* SettingsView.swift in Sources */,
+				652DB280F72EE2CFA43ED1FB /* SpeechSequence.swift in Sources */,
+				37ECC816C62D96E6EC5368F8 /* TonePlayer.swift in Sources */,
+				F8DF7307029EE226155663A6 /* VoiceOverSpeech.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3628418519F2A8DE2B5D34B6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4C8460E8BC5DC3C20047A82 /* InteropTests.swift in Sources */,
+				04191439229FA600F96035EE /* LiveRelayTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		56883D0939B6E823693F029B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 78D3C26C8CB03A97DEF54CCF /* RemRemote */;
+			targetProxy = A500487CA9EABCD007EFECB8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		058CD3363A6B2C38FE6149DC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = remremote;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "GPL v2 — remremote contributors";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.remremote.mac;
+				PRODUCT_NAME = remremote;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5335CABB2F8076047F8A6453 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.remremote.mac.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/remremote.app/Contents/MacOS/remremote";
+			};
+			name = Release;
+		};
+		6047C2702C4ACFF92BEDFFA2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AD07774D576CFAA2868AD67F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.remremote.mac.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/remremote.app/Contents/MacOS/remremote";
+			};
+			name = Debug;
+		};
+		BDFE59578126CA5765D7A0B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = remremote;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "GPL v2 — remremote contributors";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.remremote.mac;
+				PRODUCT_NAME = remremote;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		E3F74AA05E7DE1BDDCE70A58 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6C39F0D6EC8F2E435BAB6F41 /* Build configuration list for PBXProject "remremote" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6047C2702C4ACFF92BEDFFA2 /* Debug */,
+				E3F74AA05E7DE1BDDCE70A58 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B062EC05335814F33779EE1A /* Build configuration list for PBXNativeTarget "RemRemoteTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AD07774D576CFAA2868AD67F /* Debug */,
+				5335CABB2F8076047F8A6453 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DE8DEF8FC755F46020BBC295 /* Build configuration list for PBXNativeTarget "RemRemote" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				058CD3363A6B2C38FE6149DC /* Debug */,
+				BDFE59578126CA5765D7A0B8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7D12C96C5A946377074A31B8 /* XCRemoteSwiftPackageReference "CryptoSwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzyzanowskim/CryptoSwift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.8.0;
+			};
+		};
+		B781D2A9F698F6A75B327E02 /* XCRemoteSwiftPackageReference "swift-opus" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/alta/swift-opus.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4680969DD23DE3760B352CC3 /* Opus */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B781D2A9F698F6A75B327E02 /* XCRemoteSwiftPackageReference "swift-opus" */;
+			productName = Opus;
+		};
+		7A72E57F89346F75EEEE0B72 /* CryptoSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7D12C96C5A946377074A31B8 /* XCRemoteSwiftPackageReference "CryptoSwift" */;
+			productName = CryptoSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 0D7CBBBC8D54CBE142E239C0 /* Project object */;
+}
