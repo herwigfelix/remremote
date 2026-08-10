@@ -26,19 +26,25 @@ audio_stopped tells the master to tear its receiver down again. Doing it that wa
 than the slave streaming unannounced) keeps one negotiation path: only the master knows
 whether it hosts the connection, which is what decides who binds the UDP port.
 
-Topology (no relay support yet — direct connections only): the side that runs the
-TeleNVDA control server also owns the UDP audio port, using the SAME port number as the
-TCP control server so users only ever forward one port. The other side reaches out from
-an ephemeral port; when the receiver is the reaching side it punches its NAT with sealed
-hello packets the helper generates (see RemSound.Host).
+Topology: the side that runs the TeleNVDA control server also owns the UDP audio port,
+using the SAME port number as the TCP control server so users only ever forward one port.
+The other side reaches out from an ephemeral port; when the receiver is the reaching side
+it punches its NAT with sealed hello packets the helper generates (see RemSound.Host).
+When neither side hosts (a relayed session), the audio goes through the relay: a local UDP
+shim (RelayAudioProxy) registers an opaque session id with the relay and bridges the
+unmodified helper, and the relay forwards the two ends' packets verbatim — it never holds
+the password or decrypts anything, so the stream stays end-to-end encrypted.
 
 The audio encryption password is the connection's encryption key when set, otherwise the
 channel key — both sides always agree on those already.
 """
 
+import base64
 import json
 import logging
 import os
+import select
+import socket
 import subprocess
 import threading
 
@@ -99,6 +105,103 @@ def runtime_missing():
 		if any(entry.startswith("10.") for entry in entries):
 			return False
 	return True
+
+
+#: Registration framing for the dumb UDP relay: magic + version + 32-byte session id.
+RELAY_MAGIC = b"RRLY"
+RELAY_VERSION = 1
+RELAY_REGISTER_INTERVAL = 2.0
+
+
+class RelayAudioProxy:
+    """A tiny local UDP shim so RemSound.Host can stream through the relay unchanged.
+
+    RemSound.Host only knows how to reach a peer directly (connector mode: send to a
+    host:port, learn the return path from sealed hellos). The relay, however, needs each
+    side to announce an opaque session id so it can pair them. Rather than modify the
+    compiled helper, we run this shim in the middle: RemSound.Host talks to us on
+    127.0.0.1, we register the session with the relay and forward every packet verbatim
+    between RemSound and the relay. End-to-end encryption is untouched — we only move
+    bytes.
+    """
+
+    def __init__(self):
+        self._local_sock = None
+        self._relay_sock = None
+        self._relay_addr = None
+        self._session = None
+        self._remote_side = None  # RemSound.Host's (learned) local address
+        self._thread = None
+        self._running = False
+
+    def start(self, relay_host, relay_port, session_id):
+        """Bind the shim and start forwarding; returns the local port RemSound must use."""
+        self._session = session_id
+        self._relay_addr = (relay_host, int(relay_port))
+        self._local_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._local_sock.bind(("127.0.0.1", 0))
+        self._relay_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._relay_sock.bind(("0.0.0.0", 0))
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True, name="remremoteRelayAudioProxy")
+        self._thread.start()
+        return self._local_sock.getsockname()[1]
+
+    def _registration(self):
+        return RELAY_MAGIC + bytes([RELAY_VERSION]) + self._session
+
+    def _loop(self):
+        last_register = 0.0
+        while self._running:
+            # Keep the pairing (and the NAT pinhole) alive.
+            now = _monotonic()
+            if now - last_register >= RELAY_REGISTER_INTERVAL:
+                try:
+                    self._relay_sock.sendto(self._registration(), self._relay_addr)
+                except OSError:
+                    pass
+                last_register = now
+            try:
+                readers, _, _ = select.select([self._local_sock, self._relay_sock], [], [], 0.5)
+            except (OSError, ValueError):
+                break
+            for sock in readers:
+                try:
+                    data, addr = sock.recvfrom(65536)
+                except OSError:
+                    continue
+                if sock is self._local_sock:
+                    # From RemSound.Host → remember where to send replies, forward to relay.
+                    self._remote_side = addr
+                    try:
+                        self._relay_sock.sendto(data, self._relay_addr)
+                    except OSError:
+                        pass
+                else:
+                    # From the relay. Drop its registration acks; forward audio to RemSound.
+                    if len(data) == 5 + 32 and data[:4] == RELAY_MAGIC:
+                        continue
+                    if self._remote_side is not None:
+                        try:
+                            self._local_sock.sendto(data, self._remote_side)
+                        except OSError:
+                            pass
+
+    def stop(self):
+        self._running = False
+        for sock in (self._local_sock, self._relay_sock):
+            if sock is not None:
+                try:
+                    sock.close()
+                except OSError:
+                    pass
+        self._local_sock = None
+        self._relay_sock = None
+
+
+def _monotonic():
+    import time
+    return time.monotonic()
 
 
 class AudioHostRunner:
@@ -233,6 +336,10 @@ class AudioManager:
 		self._restart_timer = None
 		#: True while a background .NET runtime installation is in flight.
 		self._install_running = False
+		#: Local UDP shim bridging RemSound.Host to the relay (relayed sessions only).
+		self._relay_proxy = None
+		#: Master only: the session id sent in audio_start, reused if the reply is "relay".
+		self._audio_session = None
 
 	def _set_active(self, state):
 		"""Single place where the streaming state changes, so the menu checkbox always
@@ -271,6 +378,13 @@ class AudioManager:
 		self.runner = None
 		if runner is not None:
 			threading.Thread(target=runner.stop, daemon=True).start()
+		self._stop_relay_proxy()
+
+	def _stop_relay_proxy(self):
+		proxy = self._relay_proxy
+		self._relay_proxy = None
+		if proxy is not None:
+			threading.Thread(target=proxy.stop, daemon=True).start()
 
 	def shutdown(self):
 		"""Stop everything without touching the control channel (used on disconnect
@@ -474,12 +588,16 @@ class AudioManager:
 		hosting = plugin.server is not None
 		port = plugin.server.port if hosting else None
 		self.pending = True
+		# A fresh session id for this request. If neither side hosts, the connection is
+		# relayed and both ends register this id with the relay so it can pair them.
+		self._audio_session = base64.b64encode(os.urandom(32)).decode()
 		# remote_tts travels with the request rather than relying on the state we pushed
 		# earlier: the controlled computer must know before it starts its sender, and this
 		# way the two can never race. Older peers simply ignore the extra field.
 		plugin.master_transport.send(
 			type="audio_start", master_hosting=hosting, port=port,
 			remote_tts=self.remote_tts_enabled(),
+			audio_session=self._audio_session,
 		)
 		self._pending_timer = wx.CallLater(REPLY_TIMEOUT_MS, self._on_reply_timeout)
 		if announce:
@@ -524,6 +642,14 @@ class AudioManager:
 				# We host the connection: bind the UDP twin of our control-server port and
 				# let the slave's audio stream find us there.
 				runner.send(cmd="start-recv", password=password, bindPort=plugin.server.port)
+			elif mode == "relay":
+				# Relayed session: both ends meet at the relay (the same host we use for
+				# control). A local shim registers our session id and bridges the helper.
+				relay_host, relay_port = transport.address
+				proxy = RelayAudioProxy()
+				shim_port = proxy.start(relay_host, relay_port, base64.b64decode(self._audio_session))
+				self._relay_proxy = proxy
+				runner.send(cmd="start-recv", password=password, host="127.0.0.1", port=shim_port)
 			else:
 				# The slave hosts: reach out to its UDP port from an ephemeral port,
 				# punching our NAT with sealed hellos.
@@ -654,7 +780,7 @@ class AudioManager:
 		# Translators: reported on the controlled computer when the controller never answered the audio offer.
 		ui.message(_("No response. The controlling computer may not support audio streaming (remremote required on both ends)."))
 
-	def on_audio_start(self, master_hosting=False, port=None, remote_tts=None, **kwargs):
+	def on_audio_start(self, master_hosting=False, port=None, remote_tts=None, audio_session=None, **kwargs):
 		plugin = self.plugin
 		transport = plugin.slave_transport
 		if transport is None:
@@ -696,9 +822,22 @@ class AudioManager:
 					bindPort=plugin.server.port,
 					**exclude,
 				)
+			elif audio_session:
+				# Neither side hosts: route the audio through the relay (the same host we
+				# use for control). A local shim registers our session id and bridges the
+				# helper to the relay, which pairs us with the master and forwards verbatim.
+				relay_host, relay_port = transport.address
+				proxy = RelayAudioProxy()
+				shim_port = proxy.start(relay_host, relay_port, base64.b64decode(audio_session))
+				self._relay_proxy = proxy
+				self._pending_reply = ("relay", relay_port)
+				runner.send(
+					cmd="start-send", password=password,
+					host="127.0.0.1", port=shim_port,
+					**exclude,
+				)
 			else:
-				# Neither side hosts: this is a relayed session, which the UDP audio path
-				# cannot traverse yet.
+				# Neither side hosts and the master is too old to offer a relay session.
 				self._send_slave_error(transport, "relay_unsupported")
 				return
 		except OSError:
@@ -813,6 +952,7 @@ class AudioManager:
 		self._set_speech_forwarding(True)
 		self._set_active(False)
 		self.runner = None
+		self._stop_relay_proxy()
 		if reply is not None and plugin.slave_transport is not None:
 			self._send_slave_error(
 				plugin.slave_transport,
