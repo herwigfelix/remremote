@@ -35,12 +35,32 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: remremote
         INFOPLIST_KEY_NSHumanReadableCopyright: "GPL v2 — remremote contributors"
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        INFOPLIST_KEY_LSUIElement: NO
+        # Rationale for the audio-recording permission the Core Audio system-audio tap may
+        # request when this Mac is being controlled (audio only — no Screen Recording).
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "remremote streams this Mac's system audio to the controlling computer while this Mac is being controlled."
         SWIFT_VERSION: "5.0"
-        ENABLE_HARDENED_RUNTIME: NO
+        # Sign with the stable Developer ID identity (not ad-hoc "-"), so the code
+        # signature — and therefore the TCC privacy permissions (Accessibility, Screen
+        # Recording) keyed to Team ID + bundle id — survive every rebuild instead of
+        # resetting. Debug adds get-task-allow (tests/debugger inject) and skips the
+        # Hardened Runtime; Release turns the Hardened Runtime on for notarization.
         ENABLE_APP_SANDBOX: NO
-        CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: XJ3N4HV6L6
+        CODE_SIGN_IDENTITY: "Developer ID Application"
         DEAD_CODE_STRIPPING: YES
+      configs:
+        debug:
+          ENABLE_HARDENED_RUNTIME: NO
+          CODE_SIGN_ENTITLEMENTS: RemRemote/remremote-debug.entitlements
+        release:
+          ENABLE_HARDENED_RUNTIME: YES
+          CODE_SIGN_ENTITLEMENTS: RemRemote/remremote.entitlements
+          # Ship a universal binary (Apple Silicon + Intel); pure Swift + SPM-built
+          # libopus, so both slices compile without issue.
+          ONLY_ACTIVE_ARCH: NO
+          ARCHS: "arm64 x86_64"
 
   RemRemoteTests:
     type: bundle.unit-test
@@ -54,6 +74,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: org.remremote.mac.tests
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: XJ3N4HV6L6
+        CODE_SIGN_IDENTITY: "Developer ID Application"
+        ENABLE_HARDENED_RUNTIME: NO
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/remremote.app/Contents/MacOS/remremote"
         BUNDLE_LOADER: "$(TEST_HOST)"
 

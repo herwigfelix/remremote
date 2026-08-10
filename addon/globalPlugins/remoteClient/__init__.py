@@ -100,6 +100,10 @@ class GlobalPlugin(_GlobalPlugin):
 		self.server = None
 		self.hook_thread = None
 		self.sending_keys = False
+		#: The controlled computer's operating system once it announced it ("windows"
+		#: or "macos"), so this controlling side can adapt (Insert->ctrl+alt remap and
+		#: mandatory audio when controlling a Mac).
+		self.peer_os = None
 		self.key_modifiers = set()
 		self.hostPendingModifiers = set()
 		self.ignoreGesture = False
@@ -671,12 +675,31 @@ class GlobalPlugin(_GlobalPlugin):
 		# Translators: Presented when connected to the remote computer.
 		ui.message(_("Connected!"))
 		cues.connected()
+		self.send_os()
 		if configuration.get_config()['ui']['mute_when_controlling_local_machine'] and not self.sending_keys:
 			self.local_machine.is_muted = True
 
 	def on_disconnected_as_master(self):
 		# Translators: Presented when connection to a remote computer was interupted.
 		ui.message(_("Connection interrupted"))
+
+	def send_os(self, *args, **kwargs):
+		"""Announce this machine's operating system to the session, so a controlling Mac
+		can show its VoiceOver-key hint and a controlling computer knows whether it is
+		driving a Mac (Insert->ctrl+alt remap, mandatory audio)."""
+		for transport in (self.master_transport, self.slave_transport):
+			if transport is not None and getattr(transport, "connected", False):
+				try:
+					transport.send(type="remremote_os", os="windows")
+				except (TypeError, OSError):
+					pass
+
+	def on_peer_os(self, os=None, **kwargs):
+		self.peer_os = os
+		# Controlling a Mac: its screen reader output only reaches us as audio, so audio is
+		# mandatory. Let the audio manager force it on and refuse to stop it.
+		if self.master_transport is not None and getattr(self.master_transport, "connected", False):
+			self.audio.set_forced(os == "macos")
 
 	def connect_as_master(self, address, key, encryption_key, insecure=False):
 		transport = RelayTransport(address=address, serializer=serializer.JSONSerializer(), channel=key, connection_type='master', insecure=insecure, encryption_key=encryption_key)
@@ -688,8 +711,20 @@ class GlobalPlugin(_GlobalPlugin):
 		transport.callback_manager.register_callback(TransportEvents.DISCONNECTED, self.on_disconnected_as_master)
 		self.audio.register_master(transport)
 		self.clipboard_sync.register(transport)
+		transport.callback_manager.register_callback('msg_remremote_os', self.on_peer_os)
+		transport.callback_manager.register_callback('msg_client_joined', self.send_os)
+		transport.callback_manager.register_callback('msg_client_left', self.on_master_client_left)
 		self.master_transport = transport
 		self.master_transport.reconnector_thread.start()
+
+	def on_master_client_left(self, **kwargs):
+		"""A controlled machine left. Forget its OS and fully tear down the master-side
+		audio (a plain disconnect sends no audio_stop, so the stream would otherwise stay
+		'active'), so that if it — or a different machine — reconnects, the OS handshake
+		re-decides and the audio request is made fresh instead of being blocked by stale
+		state."""
+		self.peer_os = None
+		self.audio.reset_master_audio()
 
 	def connect_as_slave(self, address, key, encryption_key, insecure=False):
 		# The secure desktop copy joins its local bridge unattended; a modal dialog there
@@ -712,6 +747,8 @@ class GlobalPlugin(_GlobalPlugin):
 		if not globalVars.appArgs.secure:
 			self.audio.register_slave(transport)
 			self.clipboard_sync.register(transport)
+		transport.callback_manager.register_callback('msg_remremote_os', self.on_peer_os)
+		transport.callback_manager.register_callback('msg_client_joined', self.send_os)
 		self.slave_transport.reconnector_thread.start()
 		if not self.menu.FindItemById(self.disconnect_item.Id):
 			self.menu.Insert(0, self.disconnect_item)
@@ -749,6 +786,7 @@ class GlobalPlugin(_GlobalPlugin):
 	def on_connected_as_slave(self):
 		log.info("Control connector connected")
 		cues.control_server_connected()
+		self.send_os()
 		if not self.sd_handover:
 			# Announce a real connection, but stay quiet for the internal handover to a
 			# secure desktop — that one fires on every single UAC prompt, where the cue
@@ -892,8 +930,24 @@ class GlobalPlugin(_GlobalPlugin):
 			elif script in self.guestScripts:
 				wx.CallAfter(script, gesture)
 				return True
-		self.master_transport.send(type="key", **kwargs)
+		self.forward_key(kwargs['vk_code'], kwargs['scan_code'], kwargs['extended'], kwargs['pressed'])
 		return True #Don't pass it on
+
+	def forward_key(self, vk_code, scan_code, extended, pressed):
+		"""Send a captured key to the controlled machine. Controlling a Mac, the NVDA key
+		(Insert — either the dedicated or the numpad one, both VK_INSERT) is relayed as
+		control+alt, which the Mac injects as its VoiceOver keys (control+option). This
+		runs for both key paths (the low-level hook on older NVDA and handleRawKeys on
+		NVDA 2025+) and can be turned off in the add-on options."""
+		if (
+			self.peer_os == "macos"
+			and vk_code == 0x2D  # VK_INSERT (dedicated or numpad, extended or not)
+			and configuration.get_config()['ui']['remap_insert_to_voiceover']
+		):
+			for vk in (0x11, 0x12):  # VK_CONTROL, VK_MENU (alt)
+				self.master_transport.send(type="key", vk_code=vk, scan_code=0, extended=False, pressed=pressed)
+			return
+		self.master_transport.send(type="key", vk_code=vk_code, scan_code=scan_code, extended=extended, pressed=pressed)
 
 	def set_receiving_braille(self, state):
 		if state and self.master_session.patch_callbacks_added and braille.handler.enabled:
@@ -1188,7 +1242,7 @@ class GlobalPlugin(_GlobalPlugin):
 			elif script in self.guestScripts:
 				wx.CallAfter(script, gesture)
 				return False
-		self.master_transport.send(type="key", vk_code=vkCode, scan_code=scanCode, extended=extended, pressed=pressed)
+		self.forward_key(vkCode, scanCode, extended, pressed)
 		return False
 
 	def onSessionLockStateChange(self, isNowLocked):

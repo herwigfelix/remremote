@@ -381,6 +381,33 @@ audio to replace it would be unreadable. Because whether NVDA is part of the cap
 audio is fixed when the sender starts, changing the setting mid-stream makes the master
 tear the stream down and build it back up.
 
+### Operating-system exchange (remremote extension)
+
+On connecting — and again whenever a client joins — each remremote peer announces its
+operating system, so the controlling side can adapt: a Mac controlling another Mac warns
+once about the VoiceOver-key clash; a Windows machine controlling a Mac relays the NVDA
+key (Insert) as the VoiceOver keys (control+alt → control+option), toggleable in the
+add-on options; and controlling any Mac makes audio mandatory (it is the only way to hear
+the Mac's screen reader), announced as "macOS does not support this." if a stop is
+attempted. Peers that do not implement this extension simply never send it and the far
+side keeps its default (non-Mac) behaviour.
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "remremote_os": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "remremote_os" },
+        "os": { "enum": ["windows", "macos"] }
+      },
+      "required": ["type", "os"]
+    }
+  }
+}
+```
+
 ### Clipboard synchronisation (remremote extension)
 
 While enabled, each side pushes its clipboard to the other whenever it changes, so both

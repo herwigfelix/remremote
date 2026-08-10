@@ -14,14 +14,15 @@ final class AudioPlayout {
     private var buffer: [Float] = []
     private var channels = 2
     private var armed = false
-    private let targetLatencyMs = 80
+    private var targetLatencyMs = 80
     private let maxLatencyMs = 500
     private var sampleRate = 48000
 
-    func start(sampleRate: Int, channels: Int) throws {
+    func start(sampleRate: Int, channels: Int, targetLatencyMs: Int = 80) throws {
         stop()
         self.sampleRate = sampleRate
         self.channels = channels
+        self.targetLatencyMs = targetLatencyMs
         guard let format = AVAudioFormat(
             standardFormatWithSampleRate: Double(sampleRate),
             channels: AVAudioChannelCount(channels)

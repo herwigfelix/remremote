@@ -151,6 +151,16 @@ final class InteropTests: XCTestCase {
         XCTAssertEqual(KeyMap.windowsKey(for: 58), WindowsKey(vk: 0xA4, extended: false)) // Option -> LAlt
     }
 
+    func testReverseKeyMapForInjection() {
+        // Windows VK -> macOS key code, for injecting keys when this Mac is controlled.
+        XCTAssertEqual(KeyMap.macKeyCode(forVK: 0x41), 0)   // A
+        XCTAssertEqual(KeyMap.macKeyCode(forVK: 0x59), 16)  // Y
+        XCTAssertEqual(KeyMap.macKeyCode(forVK: 0x5A), 6)   // Z
+        XCTAssertEqual(KeyMap.macKeyCode(forVK: 0x0D), 36)  // Return (prefers main-block over keypad)
+        XCTAssertEqual(KeyMap.macKeyCode(forVK: 0x25), 123) // Left arrow
+        XCTAssertNil(KeyMap.macKeyCode(forVK: 0xFFFF))
+    }
+
     func testModifierFlagDetection() {
         // Left command down: its device bit (0x08) is set.
         XCTAssertTrue(KeyMap.isModifierPressed(keyCode: 55, flags: CGEventFlags(rawValue: 0x0000_0008 | 0x0010_0000)))

@@ -17,7 +17,9 @@
 		37ECC816C62D96E6EC5368F8 /* TonePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8109892D58CBFB2C49AD272 /* TonePlayer.swift */; };
 		38CC51540BDC6AAD00B914CC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98523EC02BA9630CE7548758 /* SettingsView.swift */; };
 		527AF93E61F5524EFE99AE93 /* RemRemoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C441719A6D50A96B63566B /* RemRemoteApp.swift */; };
+		53832B301900251A67C79F70 /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 322B45BFBA237B8EF1FF0DF6 /* LoginItem.swift */; };
 		5A6B673BD22502EF08E44210 /* ControlTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 882D8FA43F193AFF1302651F /* ControlTransport.swift */; };
+		5B09A233C262AC30C8FEC4D5 /* OpusStreamEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACD684E9947EDDD080466B3 /* OpusStreamEncoder.swift */; };
 		5C80318EEEB665FD1CFD3C1F /* receive_clipboard.wav in Resources */ = {isa = PBXBuildFile; fileRef = E1B276516970C38FBC4E085B /* receive_clipboard.wav */; };
 		606D299DD08BDBB04E6A622A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971B3C9D6B86E3CD0A53F79F /* AppSettings.swift */; };
 		652DB280F72EE2CFA43ED1FB /* SpeechSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDF497FA7865BAAB9702E89 /* SpeechSequence.swift */; };
@@ -27,16 +29,21 @@
 		72010E95C28DE8C8A9D54B5E /* MessageCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55E30DC3973AE15ABF06A80 /* MessageCrypto.swift */; };
 		7F3EA41C39A3BBE9CEBE40B4 /* ClipboardSyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF448B81309F5F7255D1F397 /* ClipboardSyncController.swift */; };
 		854639B666A867022FB5CBED /* RemSoundReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18BA152BE40F986E9DD0EBBF /* RemSoundReceiver.swift */; };
+		8590BD64199AADDA33A3A1F6 /* SlaveController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8879CF72DDC8B79EBCF57C60 /* SlaveController.swift */; };
+		8D295538A7C0DAEAC33F4469 /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4689924FA6081A6B18B0910 /* Permissions.swift */; };
 		8F367AE1896A93DC50CD044E /* mini_relay.py in Resources */ = {isa = PBXBuildFile; fileRef = DFB8B6568DC20B67EBC200F2 /* mini_relay.py */; };
 		8FDDEBFF4A7D35FA257DA684 /* KeyCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A638EA7E5B66431EB5231A4 /* KeyCapture.swift */; };
 		A124D5ABB78125CD33DE9261 /* OpusStreamDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 938359D01AE22DFD620701E4 /* OpusStreamDecoder.swift */; };
 		A5836BC9A68702F24FF39F58 /* controlling.wav in Resources */ = {isa = PBXBuildFile; fileRef = 93FF0B272964ED59763C1635 /* controlling.wav */; };
 		A936847A2AF5B1709DC029E3 /* AudioPlayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D915F7D62B691D7C3C71CF /* AudioPlayout.swift */; };
+		B0A70CAD0ED7F50A85B874CA /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B12328A9010FE30B2063C29 /* PermissionsView.swift */; };
 		B1FC00A31D92A50C0459CAFE /* AudioStreamController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33D6DE956BFD769F4E0FFAD2 /* AudioStreamController.swift */; };
 		C41FA51753162377DA88180A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BBF18FC28D3438D9E6FF4 /* ContentView.swift */; };
 		C4C8460E8BC5DC3C20047A82 /* InteropTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22A9AEF7FC0E94946BB73C7F /* InteropTests.swift */; };
+		C5C3AB8D46FDB4ABEBE6C493 /* KeyInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609766CA87704D4BCA79B076 /* KeyInjector.swift */; };
 		C607CCCD1DE99D945EAD1D1E /* CuePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B590DA1548DEE10A5627E92 /* CuePlayer.swift */; };
 		C6B6070CA4469DE1AE2F3673 /* ChordProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C57EED1C840407D95159E6 /* ChordProcessor.swift */; };
+		CC01235B0ECC4828D9338610 /* SystemAudioSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = A51F88FF3FF6BBB24E8DE88C /* SystemAudioSender.swift */; };
 		CD9A3611EEB87E2549CDEA64 /* disconnected.wav in Resources */ = {isa = PBXBuildFile; fileRef = 45CD27D9F7B5E9AF7D9CC819 /* disconnected.wav */; };
 		CEF4F5BF409A577B0784661A /* RemSoundCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4125BECAB6A47371516F84D /* RemSoundCrypto.swift */; };
 		D613E443BBF3EC46F57025C2 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5027715A6DCFD543EF3EDE9 /* AppState.swift */; };
@@ -66,22 +73,31 @@
 		22A9AEF7FC0E94946BB73C7F /* InteropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteropTests.swift; sourceTree = "<group>"; };
 		2BDF497FA7865BAAB9702E89 /* SpeechSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSequence.swift; sourceTree = "<group>"; };
 		318BBF18FC28D3438D9E6FF4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		322B45BFBA237B8EF1FF0DF6 /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
 		33D6DE956BFD769F4E0FFAD2 /* AudioStreamController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioStreamController.swift; sourceTree = "<group>"; };
 		37C441719A6D50A96B63566B /* RemRemoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemRemoteApp.swift; sourceTree = "<group>"; };
+		3936650D5E1BF2AD1E0605EC /* remremote.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = remremote.entitlements; sourceTree = "<group>"; };
 		3ED161C923134E541241FE70 /* SavedComputers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedComputers.swift; sourceTree = "<group>"; };
 		4222BCF97858F761006DA5F7 /* KeyMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyMap.swift; sourceTree = "<group>"; };
 		45CD27D9F7B5E9AF7D9CC819 /* disconnected.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = disconnected.wav; sourceTree = "<group>"; };
 		5EE3512BBB525103054EA2F7 /* RemPacket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemPacket.swift; sourceTree = "<group>"; };
 		5FA31CC390AE79461F053F9A /* RemoteSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSession.swift; sourceTree = "<group>"; };
+		609766CA87704D4BCA79B076 /* KeyInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyInjector.swift; sourceTree = "<group>"; };
 		7A149CC2532C3C0DABA60E09 /* controlled.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = controlled.wav; sourceTree = "<group>"; };
 		882D8FA43F193AFF1302651F /* ControlTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTransport.swift; sourceTree = "<group>"; };
+		8879CF72DDC8B79EBCF57C60 /* SlaveController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlaveController.swift; sourceTree = "<group>"; };
 		938359D01AE22DFD620701E4 /* OpusStreamDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpusStreamDecoder.swift; sourceTree = "<group>"; };
 		93FF0B272964ED59763C1635 /* controlling.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = controlling.wav; sourceTree = "<group>"; };
 		96D915F7D62B691D7C3C71CF /* AudioPlayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayout.swift; sourceTree = "<group>"; };
 		971B3C9D6B86E3CD0A53F79F /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		98523EC02BA9630CE7548758 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		9B12328A9010FE30B2063C29 /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
+		A51F88FF3FF6BBB24E8DE88C /* SystemAudioSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioSender.swift; sourceTree = "<group>"; };
 		A6B5C39211DF5DD5391DCF24 /* LiveRelayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRelayTests.swift; sourceTree = "<group>"; };
 		B4125BECAB6A47371516F84D /* RemSoundCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemSoundCrypto.swift; sourceTree = "<group>"; };
+		B4689924FA6081A6B18B0910 /* Permissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permissions.swift; sourceTree = "<group>"; };
+		B8047623E9FA1DC0177CBD68 /* remremote-debug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "remremote-debug.entitlements"; sourceTree = "<group>"; };
+		BACD684E9947EDDD080466B3 /* OpusStreamEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpusStreamEncoder.swift; sourceTree = "<group>"; };
 		BB8F91833FF2D56F112B6219 /* VoiceOverSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceOverSpeech.swift; sourceTree = "<group>"; };
 		CD4CA0EDEC3DD4434CC49C3F /* connected.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = connected.wav; sourceTree = "<group>"; };
 		CDF8279A2D65A78C031069A7 /* RemRemote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RemRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -115,7 +131,10 @@
 			isa = PBXGroup;
 			children = (
 				D5027715A6DCFD543EF3EDE9 /* AppState.swift */,
+				322B45BFBA237B8EF1FF0DF6 /* LoginItem.swift */,
+				B4689924FA6081A6B18B0910 /* Permissions.swift */,
 				37C441719A6D50A96B63566B /* RemRemoteApp.swift */,
+				8879CF72DDC8B79EBCF57C60 /* SlaveController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -124,6 +143,7 @@
 			isa = PBXGroup;
 			children = (
 				318BBF18FC28D3438D9E6FF4 /* ContentView.swift */,
+				9B12328A9010FE30B2063C29 /* PermissionsView.swift */,
 				98523EC02BA9630CE7548758 /* SettingsView.swift */,
 			);
 			path = UI;
@@ -135,9 +155,11 @@
 				96D915F7D62B691D7C3C71CF /* AudioPlayout.swift */,
 				33D6DE956BFD769F4E0FFAD2 /* AudioStreamController.swift */,
 				938359D01AE22DFD620701E4 /* OpusStreamDecoder.swift */,
+				BACD684E9947EDDD080466B3 /* OpusStreamEncoder.swift */,
 				5EE3512BBB525103054EA2F7 /* RemPacket.swift */,
 				B4125BECAB6A47371516F84D /* RemSoundCrypto.swift */,
 				18BA152BE40F986E9DD0EBBF /* RemSoundReceiver.swift */,
+				A51F88FF3FF6BBB24E8DE88C /* SystemAudioSender.swift */,
 			);
 			path = Audio;
 			sourceTree = "<group>";
@@ -187,6 +209,7 @@
 			children = (
 				F3C57EED1C840407D95159E6 /* ChordProcessor.swift */,
 				1A638EA7E5B66431EB5231A4 /* KeyCapture.swift */,
+				609766CA87704D4BCA79B076 /* KeyInjector.swift */,
 				4222BCF97858F761006DA5F7 /* KeyMap.swift */,
 				F6526A87B432F6D63D125581 /* LayoutMapper.swift */,
 			);
@@ -243,6 +266,8 @@
 		CBDB77620C79997D4BAA2DF7 /* RemRemote */ = {
 			isa = PBXGroup;
 			children = (
+				B8047623E9FA1DC0177CBD68 /* remremote-debug.entitlements */,
+				3936650D5E1BF2AD1E0605EC /* remremote.entitlements */,
 				752E6B44AA80AE6CA918EA6D /* Resources */,
 				A16F03163F39BAF06A09F32D /* Sources */,
 			);
@@ -319,8 +344,13 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					462FEE8707996FB63E892A54 = {
+						DevelopmentTeam = XJ3N4HV6L6;
+						ProvisioningStyle = Manual;
+					};
 					78D3C26C8CB03A97DEF54CCF = {
-						ProvisioningStyle = Automatic;
+						DevelopmentTeam = XJ3N4HV6L6;
+						ProvisioningStyle = Manual;
 					};
 				};
 			};
@@ -390,11 +420,16 @@
 				C607CCCD1DE99D945EAD1D1E /* CuePlayer.swift in Sources */,
 				2F2B0D4BC9A866048E71AE1B /* DirectTTSSpeech.swift in Sources */,
 				8FDDEBFF4A7D35FA257DA684 /* KeyCapture.swift in Sources */,
+				C5C3AB8D46FDB4ABEBE6C493 /* KeyInjector.swift in Sources */,
 				281F185E65D023BA6C4017D5 /* KeyMap.swift in Sources */,
 				21C412CDCD451B2CC0837E62 /* KeychainStore.swift in Sources */,
 				680C57232A496E27FBE30D36 /* LayoutMapper.swift in Sources */,
+				53832B301900251A67C79F70 /* LoginItem.swift in Sources */,
 				72010E95C28DE8C8A9D54B5E /* MessageCrypto.swift in Sources */,
 				A124D5ABB78125CD33DE9261 /* OpusStreamDecoder.swift in Sources */,
+				5B09A233C262AC30C8FEC4D5 /* OpusStreamEncoder.swift in Sources */,
+				8D295538A7C0DAEAC33F4469 /* Permissions.swift in Sources */,
+				B0A70CAD0ED7F50A85B874CA /* PermissionsView.swift in Sources */,
 				18F70397DE9965D1976244DA /* RemPacket.swift in Sources */,
 				527AF93E61F5524EFE99AE93 /* RemRemoteApp.swift in Sources */,
 				CEF4F5BF409A577B0784661A /* RemSoundCrypto.swift in Sources */,
@@ -402,7 +437,9 @@
 				1F858C864330ADAFA1F478F7 /* RemoteSession.swift in Sources */,
 				DA039A63E555458BCB89867E /* SavedComputers.swift in Sources */,
 				38CC51540BDC6AAD00B914CC /* SettingsView.swift in Sources */,
+				8590BD64199AADDA33A3A1F6 /* SlaveController.swift in Sources */,
 				652DB280F72EE2CFA43ED1FB /* SpeechSequence.swift in Sources */,
+				CC01235B0ECC4828D9338610 /* SystemAudioSender.swift in Sources */,
 				37ECC816C62D96E6EC5368F8 /* TonePlayer.swift in Sources */,
 				F8DF7307029EE226155663A6 /* VoiceOverSpeech.swift in Sources */,
 			);
@@ -432,17 +469,21 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = "RemRemote/remremote-debug.entitlements";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = XJ3N4HV6L6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = remremote;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSUIElement = NO;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "GPL v2 — remremote contributors";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "remremote streams this Mac's system audio to the controlling computer while this Mac is being controlled.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -459,7 +500,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = XJ3N4HV6L6;
+				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -540,7 +585,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = XJ3N4HV6L6;
+				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -557,23 +606,29 @@
 		BDFE59578126CA5765D7A0B8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "arm64 x86_64";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = RemRemote/remremote.entitlements;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = XJ3N4HV6L6;
 				ENABLE_APP_SANDBOX = NO;
-				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = remremote;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSUIElement = NO;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "GPL v2 — remremote contributors";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "remremote streams this Mac's system audio to the controlling computer while this Mac is being controlled.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
+				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = org.remremote.mac;
 				PRODUCT_NAME = remremote;
 				SDKROOT = macosx;

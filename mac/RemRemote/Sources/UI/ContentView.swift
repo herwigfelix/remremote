@@ -2,10 +2,22 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var state: AppState
+    @EnvironmentObject private var permissions: Permissions
+    @State private var onboardingDone = AppSettings.shared.onboardingDone
+
+    private var needsOnboarding: Bool {
+        !(permissions.canConnect && onboardingDone)
+    }
 
     var body: some View {
         Group {
-            if state.status == .disconnected {
+            if needsOnboarding {
+                PermissionsView {
+                    AppSettings.shared.onboardingDone = true
+                    onboardingDone = true
+                    permissions.refresh()
+                }
+            } else if state.status == .disconnected {
                 ConnectView()
             } else {
                 SessionView()
@@ -40,6 +52,18 @@ struct ContentView: View {
         } message: { motd in
             Text(motd)
         }
+        .alert(
+            String(localized: "Controlling another Mac"),
+            isPresented: Binding(
+                get: { state.voiceOverHint != nil },
+                set: { if !$0 { state.voiceOverHint = nil } }
+            ),
+            presenting: state.voiceOverHint
+        ) { _ in
+            Button(String(localized: "OK"), role: .cancel) { state.voiceOverHint = nil }
+        } message: { hint in
+            Text(hint)
+        }
     }
 }
 
@@ -54,6 +78,7 @@ struct ConnectView: View {
     @State private var saveComputer = false
     @State private var computerName = ""
     @State private var selectedComputer: SavedComputer?
+    @State private var beControlled = false
 
     var body: some View {
         Form {
@@ -92,6 +117,11 @@ struct ConnectView: View {
             }
 
             Section(String(localized: "New connection")) {
+                Picker(String(localized: "This Mac"), selection: $beControlled) {
+                    Text(String(localized: "controls another computer")).tag(false)
+                    Text(String(localized: "is controlled (relay only)")).tag(true)
+                }
+                .pickerStyle(.radioGroup)
                 TextField(String(localized: "Host (host or host:port)"), text: $host)
                     .autocorrectionDisabled()
                 TextField(String(localized: "Key"), text: $key)
@@ -130,12 +160,12 @@ struct ConnectView: View {
                 encryptionPassword: encryptionPassword.isEmpty ? nil : encryptionPassword
             )
         }
-        state.connect(
-            host: parsedHost,
-            port: parsedPort,
-            key: key,
-            encryptionPassword: encryptionPassword.isEmpty ? nil : encryptionPassword
-        )
+        let enc = encryptionPassword.isEmpty ? nil : encryptionPassword
+        if beControlled {
+            state.connectAsControlled(host: parsedHost, port: parsedPort, key: key, encryptionPassword: enc)
+        } else {
+            state.connect(host: parsedHost, port: parsedPort, key: key, encryptionPassword: enc)
+        }
     }
 
     /// Accepts "host", "host:port", "[v6addr]" and "[v6addr]:port".
@@ -168,6 +198,16 @@ struct SessionView: View {
     @EnvironmentObject private var state: AppState
 
     private var statusText: String {
+        if state.controlledMode {
+            switch state.status {
+            case .disconnected: return String(localized: "Not connected")
+            case .connecting: return String(localized: "Connecting…")
+            case .connectedWaitingForSlave:
+                return String(localized: "Waiting to be controlled — connected to the relay")
+            case .connected:
+                return String(localized: "This Mac is being controlled")
+            }
+        }
         switch state.status {
         case .disconnected:
             return String(localized: "Not connected")
@@ -212,8 +252,14 @@ struct SessionView: View {
 
             HStack {
                 Button(String(localized: "Toggle remote audio")) { state.toggleAudio() }
+                    .disabled(state.audioForced)
                 Button(String(localized: "Toggle clipboard sync")) { state.toggleClipboardSync() }
                 Button(String(localized: "Push clipboard")) { state.pushClipboard() }
+            }
+            if state.audioForced {
+                Text("Audio is always on while controlling a Mac.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             if let error = state.lastError {

@@ -190,7 +190,10 @@ final class RemSoundReceiver {
         playout.stop()
         guard incoming.codec == 2 else { return } // the remremote helper always sends Opus
         decoder = OpusStreamDecoder(sampleRate: incoming.sampleRate, channels: incoming.channels)
-        try? playout.start(sampleRate: Int(incoming.sampleRate), channels: Int(incoming.channels))
+        // Over a relay the far sender can deliver audio in periodic bursts, so buffer more
+        // before playback to ride them out; a direct link stays low-latency.
+        let targetLatency = relaySessionId != nil ? 150 : 80
+        try? playout.start(sampleRate: Int(incoming.sampleRate), channels: Int(incoming.channels), targetLatencyMs: targetLatency)
     }
 
     private func handleAudio(_ payload: Data, streamId: UInt16) {

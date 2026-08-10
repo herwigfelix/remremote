@@ -856,3 +856,11 @@ msgstr "Bei Tonübertragung die &Sprachausgabe des entfernten Computers verwende
 #. Translators: gesture description for the remote speech synthesizer toggle
 msgid "Turn using the speech synthesizer of the remote computer during audio streaming on or off"
 msgstr "Verwendung der Sprachausgabe des entfernten Computers bei Tonübertragung ein- oder ausschalten"
+
+#. Translators: reported when trying to turn off audio while controlling a Mac.
+msgid "macOS does not support this."
+msgstr "macOS unterstützt dies nicht."
+
+#. Translators: label of a checkbox in the add-on options to relay the Insert key as VoiceOver keys when controlling a Mac.
+msgid "When controlling a Mac, send the NVDA key (Insert) as the VoiceOver keys (control+option)"
+msgstr "Beim Steuern eines Macs die NVDA-Taste (Einfügen) als VoiceOver-Tasten (Steuerung+Wahl) senden"

@@ -12,6 +12,17 @@ def address_to_hostport(addr):
 	return (addr.hostname, port)
 
 
+def is_loopback(host):
+	"""True if the host refers to this machine (localhost). Connecting to yourself can't
+	be intercepted, so there is no reason to verify the self-signed certificate of your
+	own control server — which would otherwise warn that the add-on 'doesn't trust its
+	own server'."""
+	if not host:
+		return False
+	h = host.strip("[]").lower()
+	return h == "localhost" or h == "::1" or h == "::ffff:127.0.0.1" or h.startswith("127.")
+
+
 def hostport_to_address(hostport):
 	host, port = hostport
 	if ":" in host:

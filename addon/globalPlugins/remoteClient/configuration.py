@@ -36,6 +36,7 @@ configspec = StringIO("""
 	prompt_shown = boolean(default=False)
 
 [ui]
+	remap_insert_to_voiceover = boolean(default=True)
 	play_sounds = boolean(default=True)
 	alert_before_slave_disconnect = boolean(default=True)
 	mute_when_controlling_local_machine = boolean(default=False)

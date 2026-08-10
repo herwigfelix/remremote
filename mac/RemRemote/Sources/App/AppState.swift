@@ -22,14 +22,24 @@ final class AppState: ObservableObject {
     @Published private(set) var controlling = false
     @Published private(set) var audioState: AudioStreamController.State = .off
     @Published private(set) var clipboardSyncEnabled = false
+    /// True while the controlled machine is a Mac — audio is then mandatory and the
+    /// toggle is disabled in the UI.
+    @Published private(set) var audioForced = false
+    /// True once we know the controlled machine is a Mac (for UI hints).
+    @Published private(set) var remoteIsMac = false
+    /// True while this Mac is the controlled machine (the slave role).
+    @Published private(set) var controlledMode = false
     @Published var certificatePrompt: CertificatePrompt?
     @Published var motdText: String?
+    @Published var voiceOverHint: String?
     @Published var lastError: String?
 
     let settings = AppSettings.shared
     let computers = SavedComputersStore()
+    let permissions = Permissions()
 
     private(set) var session: RemoteSession?
+    private var slave: SlaveController?
     private let keyCapture = KeyCapture()
     private let cues = CuePlayer()
     private let tones = TonePlayer()
@@ -45,6 +55,9 @@ final class AppState: ObservableObject {
         }
         audio.announce = { [weak self] text in
             DispatchQueue.main.async { self?.announce(text) }
+        }
+        audio.onForcedChanged = { [weak self] forced in
+            DispatchQueue.main.async { self?.audioForced = forced }
         }
         clipboard.onStateChanged = { [weak self] enabled in
             DispatchQueue.main.async { self?.clipboardSyncEnabled = enabled }
@@ -124,7 +137,51 @@ final class AppState: ObservableObject {
         connect(host: computer.host, port: computer.port, key: secrets.key, encryptionPassword: secrets.encryptionPassword)
     }
 
+    /// Let this Mac be controlled (the slave role), over the relay only.
+    func connectAsControlled(host: String, port: UInt16, key: String, encryptionPassword: String?) {
+        disconnect()
+        lastError = nil
+        controlledMode = true
+        let configuration = SessionConfiguration(
+            host: host, port: port, key: key,
+            encryptionPassword: (encryptionPassword?.isEmpty ?? true) ? nil : encryptionPassword
+        )
+        let slave = SlaveController(configuration: configuration)
+        self.slave = slave
+        slave.onState = { [weak self] slaveState in
+            DispatchQueue.main.async { self?.applySlaveState(slaveState) }
+        }
+        slave.onError = { [weak self] text in
+            DispatchQueue.main.async { self?.lastError = text }
+        }
+        status = .connecting
+        slave.connect()
+    }
+
+    private func applySlaveState(_ slaveState: SlaveController.State) {
+        switch slaveState {
+        case .connecting: status = .connecting
+        case .waitingForController:
+            if status == .connected { cues.play(.disconnected) }
+            status = .connectedWaitingForSlave
+        case .controlled:
+            status = .connected
+            cues.play(.controlled)
+        }
+    }
+
     func disconnect() {
+        if let slave {
+            slave.disconnect()
+            self.slave = nil
+            controlledMode = false
+            if status != .disconnected {
+                status = .disconnected
+                cues.play(.disconnected)
+                announce(String(localized: "Disconnected"))
+            }
+            return
+        }
         guard let session else { return }
         // Detach first: close() fires a disconnect event, which would otherwise announce
         // "connection interrupted" on top of our own "disconnected".
@@ -135,10 +192,28 @@ final class AppState: ObservableObject {
         keyCapture.stop()
         session.close()
         self.session = nil
+        remoteIsMac = false
         if status != .disconnected {
             status = .disconnected
             cues.play(.disconnected)
             announce(String(localized: "Disconnected"))
+        }
+    }
+
+    // MARK: - Autoconnect (on launch)
+
+    func startupAutoConnect() {
+        guard settings.autoConnectEnabled, permissions.canConnect else { return }
+        let (host, port) = ConnectView.parse(address: settings.autoConnectHost)
+        guard !host.isEmpty else { return }
+        let secrets = KeychainStore.load(for: AppSettings.autoConnectKeychainID)
+        let key = secrets?.key ?? ""
+        guard !key.isEmpty else { return }
+        let enc = secrets?.encryptionPassword
+        if settings.autoConnectControlled {
+            connectAsControlled(host: host, port: port, key: key, encryptionPassword: enc)
+        } else {
+            connect(host: host, port: port, key: key, encryptionPassword: enc)
         }
     }
 
@@ -178,7 +253,7 @@ final class AppState: ObservableObject {
     private func handleSessionEvent(_ event: SessionEvent) {
         switch event {
         case .connectionEstablished:
-            status = session?.hasSlave == true ? .connected : .connectedWaitingForSlave
+            status = session?.hasPeer == true ? .connected : .connectedWaitingForSlave
             cues.play(.connected)
             announce(String(localized: "Connected!"))
             if !KeyCapture.ensureAccessibilityPermission() {
@@ -192,8 +267,10 @@ final class AppState: ObservableObject {
             }
         case .disconnected:
             setControlling(false)
+            audio.setForced(false)
             audio.shutdown()
             keyCapture.stop()
+            remoteIsMac = false
             if status == .connected || status == .connectedWaitingForSlave {
                 cues.play(.disconnected)
                 announce(String(localized: "Connection interrupted"))
@@ -205,17 +282,34 @@ final class AppState: ObservableObject {
                 fingerprint: fingerprint ?? String(localized: "unknown"),
                 address: session?.configuration.address ?? ""
             )
-        case .slaveJoined:
+        case .peerJoined:
             status = .connected
             cues.play(.connected)
-        case .slaveLeft:
+        case .peerLeft:
             setControlling(false)
+            audio.setForced(false)
+            remoteIsMac = false
             status = .connectedWaitingForSlave
             cues.play(.disconnected)
+        case .peerOSKnown(let os):
+            handlePeerOS(os)
         case .motd(let text):
             motdText = text
         case .serverError(let text):
             lastError = text
+        }
+    }
+
+    /// The controlled machine told us its OS. Controlling a Mac means its output can only
+    /// be heard as audio, so audio becomes mandatory; and since this app runs on a Mac,
+    /// a Mac↔Mac session warns once about the VoiceOver-key conflict.
+    private func handlePeerOS(_ os: String) {
+        let isMac = os == "macos"
+        remoteIsMac = isMac
+        audio.setForced(isMac)
+        if isMac, !settings.voiceOverConflictHintShown {
+            settings.voiceOverConflictHintShown = true
+            voiceOverHint = String(localized: "You are controlling another Mac. VoiceOver on this Mac and on the remote Mac use the same keys, which can clash while you send keystrokes. To avoid it, either turn VoiceOver off on this Mac, or set the two machines to different VoiceOver modifier keys (for example Control+Option on one and Caps Lock on the other).")
         }
     }
 
@@ -240,7 +334,7 @@ final class AppState: ObservableObject {
     // MARK: - Control toggle (F10)
 
     private func handleToggleKey() -> Bool {
-        guard let session, session.connectedToServer, session.hasSlave else { return false }
+        guard let session, session.connectedToServer, session.hasPeer else { return false }
         setControlling(!controlling)
         return true
     }

@@ -14,7 +14,7 @@ addon_info = AddonInfo(
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
 	addon_description= _("""Allows remote control of and remote access to another machine, including streaming the remote computer's audio. remremote is a fork of TeleNVDA, which itself is based on NVDA Remote."""),
 	# version
-	addon_version= "2026.8.10",
+	addon_version= "2026.8.108",
 	# Author(s)
 	addon_author= "Asociación Comunidad Hispanohablante de NVDA <contacto@nvda.es> and other contributors. Original work by Tyler Spivey <tspivey@pcdesk.net>, Christopher Toth <q@q-continuum.net>",
 	# URL for the add-on documentation support

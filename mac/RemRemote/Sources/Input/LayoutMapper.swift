@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import Carbon.HIToolbox
 
 /// Translates the *character* a key produces under the Mac's active keyboard layout into
 /// the Windows virtual-key code that reproduces it on the controlled machine.
@@ -62,14 +63,55 @@ enum LayoutMapper {
 
     /// The unshifted character the key produces under the current layout (lowercased),
     /// e.g. the "Z" key on a German keyboard yields "z", the "1" key yields "1".
+    ///
+    /// Uses UCKeyTranslate with NO modifiers, deliberately: NSEvent.charactersIgnoringModifiers
+    /// still reflects Shift (and Caps Lock), so with Shift held it returns the *shifted*
+    /// character — which, mapped to a VK and then combined with the separately-sent Shift on
+    /// the far side, produces the wrong glyph (e.g. "_" -> "'", "'" -> "Ä"). The base
+    /// character is layout-correct and Shift-independent, and dead keys (´, ^) resolve to
+    /// their own character instead of falling through to a US position.
     static func baseCharacter(for event: CGEvent) -> Character? {
-        guard let nsEvent = NSEvent(cgEvent: event),
-              let chars = nsEvent.charactersIgnoringModifiers,
-              let scalar = chars.unicodeScalars.first,
-              scalar.value >= 0x20 else { // reject control characters
+        let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+        return unshiftedCharacter(forKeyCode: keyCode)
+    }
+
+    static func unshiftedCharacter(forKeyCode keyCode: CGKeyCode) -> Character? {
+        guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let layoutPtr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else {
             return nil
         }
-        let lowered = Character(scalar).lowercased()
-        return lowered.first
+        let layoutData = Unmanaged<CFData>.fromOpaque(layoutPtr).takeUnretainedValue() as Data
+        let kbType = UInt32(LMGetKbdType())
+
+        func translate(_ kc: CGKeyCode, state: inout UInt32, options: OptionBits) -> String {
+            var chars = [UniChar](repeating: 0, count: 8)
+            var length = 0
+            let status = layoutData.withUnsafeBytes { raw -> OSStatus in
+                guard let base = raw.baseAddress else { return OSStatus(-1) }
+                let layout = base.assumingMemoryBound(to: UCKeyboardLayout.self)
+                return UCKeyTranslate(layout, kc, UInt16(kUCKeyActionDown), 0, kbType,
+                                      options, &state, chars.count, &length, &chars)
+            }
+            guard status == noErr else { return "" }
+            return String(utf16CodeUnits: chars, count: length)
+        }
+
+        var state: UInt32 = 0
+        var result = translate(keyCode, state: &state, options: OptionBits(kUCKeyTranslateNoDeadKeysBit))
+        if result.isEmpty {
+            // A dead key (´, ^, `): resolve it by pressing it, then flushing with a space,
+            // which yields the spacing form of the accent (e.g. "´"). Without this it would
+            // fall through to the US positional map and send the wrong key.
+            state = 0
+            _ = translate(keyCode, state: &state, options: 0)
+            if state != 0 {
+                result = translate(49 /* space */, state: &state, options: 0)
+            }
+        }
+        // First printable, non-space scalar.
+        for scalar in result.unicodeScalars where scalar.value > 0x20 {
+            return Character(scalar).lowercased().first
+        }
+        return nil
     }
 }

@@ -213,6 +213,23 @@ enum KeyMap {
         table[keyCode]
     }
 
+    /// Reverse lookup for the controlled (slave) role: a Windows virtual-key code back to a
+    /// macOS key code, so incoming key messages can be injected. Positional (the inverse of
+    /// `table`); the extended flag disambiguates the few keys that share a VK.
+    static let reverseTable: [Int: Int64] = {
+        var map: [Int: Int64] = [:]
+        // Build from `table`; when several mac keys map to one VK, prefer the non-extended,
+        // lower keycode (the main-block key rather than the keypad twin).
+        for (macCode, key) in table.sorted(by: { $0.key < $1.key }) {
+            if map[key.vk] == nil { map[key.vk] = macCode }
+        }
+        return map
+    }()
+
+    static func macKeyCode(forVK vk: Int) -> Int64? {
+        reverseTable[vk]
+    }
+
     /// Physical keys in the printable "character" block — letters, the number row and the
     /// OEM punctuation around it. These are mapped by the character the active layout
     /// produces (see LayoutMapper), not by US physical position. Whitespace, navigation,

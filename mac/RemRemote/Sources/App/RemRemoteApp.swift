@@ -8,6 +8,8 @@ struct RemRemoteApp: App {
         WindowGroup("remremote") {
             ContentView()
                 .environmentObject(state)
+                .environmentObject(state.permissions)
+                .onAppear { state.startupAutoConnect() }
         }
         .commands {
             CommandGroup(after: .appSettings) {

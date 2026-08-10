@@ -58,7 +58,29 @@ final class AudioStreamController {
 
     // MARK: - Toggles
 
+    /// True when the controlled machine is a Mac: its output can only reach the user as
+    /// audio, so streaming is mandatory and cannot be switched off.
+    private(set) var forced = false
+    var onForcedChanged: ((Bool) -> Void)?
+
+    /// Force audio on (controlling a Mac) or release the lock. While forced, audio starts
+    /// automatically and the toggle refuses to stop it.
+    func setForced(_ on: Bool) {
+        guard on != forced else { return }
+        forced = on
+        onForcedChanged?(on)
+        if on, case .off = state {
+            start(announceRequest: false)
+        }
+    }
+
     func toggleAudio() {
+        if forced {
+            // Controlling a Mac: audio is mandatory. Keep it on, don't offer to stop it.
+            if case .off = state { start(announceRequest: false) }
+            announce?(String(localized: "Audio cannot be turned off while controlling a Mac."))
+            return
+        }
         switch state {
         case .off:
             start(announceRequest: true)

@@ -29,7 +29,34 @@ final class AppSettings: ObservableObject {
         static let useRemoteTTS = "useRemoteTTS"
         static let trustedFingerprints = "trustedFingerprints"
         static let seenMOTDs = "seenMOTDs"
+        static let autoConnectEnabled = "autoConnectEnabled"
+        static let autoConnectControlled = "autoConnectControlled"
+        static let autoConnectHost = "autoConnectHost"
+        static let autoConnectPort = "autoConnectPort"
     }
+
+    // MARK: - Autoconnect (start a session automatically on launch)
+
+    /// Connect automatically when the app starts (like NVDA Remote's autoconnect).
+    @Published var autoConnectEnabled: Bool {
+        didSet { defaults.set(autoConnectEnabled, forKey: Keys.autoConnectEnabled) }
+    }
+
+    /// true: this Mac is the controlled machine (slave); false: it controls another (master).
+    @Published var autoConnectControlled: Bool {
+        didSet { defaults.set(autoConnectControlled, forKey: Keys.autoConnectControlled) }
+    }
+
+    @Published var autoConnectHost: String {
+        didSet { defaults.set(autoConnectHost, forKey: Keys.autoConnectHost) }
+    }
+
+    @Published var autoConnectPort: Int {
+        didSet { defaults.set(autoConnectPort, forKey: Keys.autoConnectPort) }
+    }
+
+    /// The autoconnect key/encryption live in the keychain, like saved computers.
+    static let autoConnectKeychainID = UUID(uuidString: "00000000-0000-0000-0000-0000A0C0A0C0")!
 
     /// The NVDA key (Insert) is produced by holding Command+Option together. On by
     /// default because most Mac keyboards have no Insert key.
@@ -78,6 +105,22 @@ final class AppSettings: ObservableObject {
         ttsRate = defaults.object(forKey: Keys.ttsRate) as? Double ?? 0.5
         ttsPitch = defaults.object(forKey: Keys.ttsPitch) as? Double ?? 1.0
         useRemoteTTS = defaults.object(forKey: Keys.useRemoteTTS) as? Bool ?? false
+        autoConnectEnabled = defaults.bool(forKey: Keys.autoConnectEnabled)
+        autoConnectControlled = defaults.bool(forKey: Keys.autoConnectControlled)
+        autoConnectHost = defaults.string(forKey: Keys.autoConnectHost) ?? ""
+        autoConnectPort = defaults.object(forKey: Keys.autoConnectPort) as? Int ?? 6837
+    }
+
+    /// Whether the user has passed the permissions onboarding gate at least once.
+    var onboardingDone: Bool {
+        get { defaults.bool(forKey: "onboardingDone") }
+        set { defaults.set(newValue, forKey: "onboardingDone") }
+    }
+
+    /// Whether the one-time "controlling another Mac / VoiceOver keys clash" hint was shown.
+    var voiceOverConflictHintShown: Bool {
+        get { defaults.bool(forKey: "voiceOverConflictHintShown") }
+        set { defaults.set(newValue, forKey: "voiceOverConflictHintShown") }
     }
 
     // MARK: - Trusted certificate fingerprints (address -> lowercase sha256 hex)

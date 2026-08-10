@@ -439,6 +439,26 @@
       "localizations": {
         "de": { "stringUnit": { "state": "translated", "value": "Alle vertrauenswürdigen Fingerabdrücke löschen" } }
       }
+    },
+    "Audio cannot be turned off while controlling a Mac.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Audio kann beim Steuern eines Macs nicht ausgeschaltet werden." } }
+      }
+    },
+    "Audio is always on while controlling a Mac.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Audio ist beim Steuern eines Macs immer eingeschaltet." } }
+      }
+    },
+    "Controlling another Mac": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Steuerung eines anderen Macs" } }
+      }
+    },
+    "You are controlling another Mac. VoiceOver on this Mac and on the remote Mac use the same keys, which can clash while you send keystrokes. To avoid it, either turn VoiceOver off on this Mac, or set the two machines to different VoiceOver modifier keys (for example Control+Option on one and Caps Lock on the other).": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Sie steuern einen anderen Mac. VoiceOver auf diesem und auf dem entfernten Mac nutzen dieselben Tasten, was beim Senden von Tastendrücken zu Konflikten führen kann. Um das zu vermeiden, schalten Sie VoiceOver auf diesem Mac aus oder stellen Sie auf beiden Geräten unterschiedliche VoiceOver-Tasten ein (zum Beispiel Steuerung+Wahl auf dem einen und Feststelltaste auf dem anderen)." } }
+      }
     }
   }
 }

@@ -20,8 +20,10 @@ enum SessionEvent {
     case connectionFailed(Error?)
     case disconnected
     case certificateUntrusted(fingerprint: String?)
-    case slaveJoined
-    case slaveLeft
+    case peerJoined
+    case peerLeft
+    /// The peer told us its operating system ("windows" or "macos").
+    case peerOSKnown(String)
     case motd(String)
     case serverError(String)
 }
@@ -33,24 +35,32 @@ final class RemoteSession {
     typealias Message = [String: Any]
 
     let configuration: SessionConfiguration
+    /// Our role in the session: "master" (controlling) or "slave" (controlled).
+    let connectionType: String
 
     var onEvent: ((SessionEvent) -> Void)?
 
     private(set) var transport: ControlTransport?
     private var handlers: [String: [(Message) -> Void]] = [:]
     private var connectedHandlers: [() -> Void] = []
-    private var slaveCount = 0
+    private var peerCount = 0
     private var closed = false
     private var reconnectTimer: DispatchSourceTimer?
     private let queue = DispatchQueue.main
 
+    /// The connection type of the peers we care about (the opposite of our own role).
+    private var peerType: String { connectionType == "master" ? "slave" : "master" }
+
     /// True while the TCP/TLS link to the server is up.
     private(set) var connectedToServer = false
-    /// True while at least one controlled (slave) computer is in the channel.
-    var hasSlave: Bool { slaveCount > 0 }
+    /// True while at least one peer (the opposite role) is in the channel.
+    var hasPeer: Bool { peerCount > 0 }
+    /// The peer's operating system once it announced it ("windows"/"macos").
+    private(set) var peerOS: String?
 
-    init(configuration: SessionConfiguration) {
+    init(configuration: SessionConfiguration, connectionType: String = "master") {
         self.configuration = configuration
+        self.connectionType = connectionType
         registerCoreHandlers()
     }
 
@@ -92,9 +102,9 @@ final class RemoteSession {
         cancelReconnect()
         transport?.close()
         transport = nil
-        if connectedToServer || slaveCount > 0 {
+        if connectedToServer || peerCount > 0 {
             connectedToServer = false
-            slaveCount = 0
+            peerCount = 0
             onEvent?(.disconnected)
         }
     }
@@ -129,19 +139,21 @@ final class RemoteSession {
         switch event {
         case .connected:
             connectedToServer = true
+            peerOS = nil
             transport?.send(type: "protocol_version", ["version": 2])
             transport?.send(type: "join", [
                 "channel": configuration.key,
-                "connection_type": "master",
+                "connection_type": connectionType,
             ])
             onEvent?(.connectionEstablished)
             for handler in connectedHandlers { handler() }
         case .disconnected(let error):
             let wasConnected = connectedToServer
             connectedToServer = false
-            if slaveCount > 0 {
-                slaveCount = 0
-                onEvent?(.slaveLeft)
+            peerOS = nil
+            if peerCount > 0 {
+                peerCount = 0
+                onEvent?(.peerLeft)
             }
             if wasConnected {
                 onEvent?(.disconnected)
@@ -170,27 +182,34 @@ final class RemoteSession {
         register("channel_joined") { [weak self] message in
             guard let self else { return }
             let clients = message["clients"] as? [[String: Any]] ?? []
-            for client in clients where (client["connection_type"] as? String) == "slave" {
-                self.slaveCount += 1
+            for client in clients where (client["connection_type"] as? String) == self.peerType {
+                self.peerCount += 1
             }
-            if self.slaveCount > 0 { self.onEvent?(.slaveJoined) }
+            if self.peerCount > 0 { self.onEvent?(.peerJoined) }
+            self.sendOS() // tell peers already present which OS we are
         }
         register("client_joined") { [weak self] message in
             guard let self else { return }
             guard let client = message["client"] as? [String: Any],
-                  (client["connection_type"] as? String) == "slave" else { return }
-            self.slaveCount += 1
-            self.sendBrailleInfo()
-            self.onEvent?(.slaveJoined)
+                  (client["connection_type"] as? String) == self.peerType else { return }
+            self.peerCount += 1
+            if self.connectionType == "master" { self.sendBrailleInfo() }
+            self.sendOS() // a new peer joined — announce our OS to it
+            self.onEvent?(.peerJoined)
         }
         register("client_left") { [weak self] _ in
             guard let self else { return }
-            // The protocol does not say which type left; the add-on tracks ids, but a
-            // one-to-one session only ever has the one slave.
-            if self.slaveCount > 0 {
-                self.slaveCount -= 1
-                self.onEvent?(.slaveLeft)
+            // A one-to-one session only ever has the one peer.
+            if self.peerCount > 0 {
+                self.peerCount -= 1
+                self.peerOS = nil
+                self.onEvent?(.peerLeft)
             }
+        }
+        register("remremote_os") { [weak self] message in
+            guard let self, let os = message["os"] as? String else { return }
+            self.peerOS = os
+            self.onEvent?(.peerOSKnown(os))
         }
         register("motd") { [weak self] message in
             guard let self, let motd = message["motd"] as? String, !motd.isEmpty else { return }
@@ -209,12 +228,16 @@ final class RemoteSession {
             self?.onEvent?(.serverError(text))
         }
         registerOnConnected { [weak self] in
-            self?.sendBrailleInfoIfSlavePresent()
+            guard let self else { return }
+            self.sendOS()
+            if self.connectionType == "master", self.peerCount > 0 { self.sendBrailleInfo() }
         }
     }
 
-    private func sendBrailleInfoIfSlavePresent() {
-        if slaveCount > 0 { sendBrailleInfo() }
+    /// Announce our operating system so the peer can adapt (VoiceOver-key hints, the
+    /// Insert->ctrl+option remap, forced audio when a Mac is controlled).
+    private func sendOS() {
+        transport?.send(type: "remremote_os", ["os": "macos"])
     }
 
     /// We have no braille display; announcing zero cells stops the controlled side from

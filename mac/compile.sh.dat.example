@@ -1,0 +1,18 @@
+# compile.sh.dat — credentials for signing and notarization (macOS).
+#
+# Read by `./compile.sh --release`. Contains secrets — do NOT commit it (it is
+# gitignored). Copy this file and fill in your values:
+#
+#     cp compile.sh.dat.example compile.sh.dat && chmod 600 compile.sh.dat
+#
+# SIGN_IDENTITY  Name of the Developer ID Application identity in the keychain.
+#                List with:  security find-identity -v -p codesigning
+# API_KEY_P8     App Store Connect API key (.p8). Relative to this directory or absolute.
+# API_KEY_ID     The id in the filename: AuthKey_<API_KEY_ID>.p8
+# API_ISSUER_ID  Issuer id from App Store Connect (Users and Access -> Integrations ->
+#                App Store Connect API).
+
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+API_KEY_P8="certs/AuthKey_XXXXXXXXXX.p8"
+API_KEY_ID="XXXXXXXXXX"
+API_ISSUER_ID="00000000-0000-0000-0000-000000000000"

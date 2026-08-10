@@ -2,6 +2,18 @@ import SwiftUI
 import AVFoundation
 
 struct SettingsView: View {
+    var body: some View {
+        TabView {
+            GeneralSettingsView()
+                .tabItem { Label(String(localized: "General"), systemImage: "gearshape") }
+            StartupSettingsView()
+                .tabItem { Label(String(localized: "Startup"), systemImage: "power") }
+        }
+        .frame(width: 540)
+    }
+}
+
+struct GeneralSettingsView: View {
     @EnvironmentObject private var state: AppState
     @ObservedObject private var settings = AppSettings.shared
 
@@ -92,7 +104,59 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520)
         .padding()
+    }
+}
+
+struct StartupSettingsView: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    @State private var launchAtLogin = LoginItem.isEnabled
+    @State private var key = ""
+    @State private var encryptionPassword = ""
+
+    var body: some View {
+        Form {
+            Section(String(localized: "Start with macOS")) {
+                Toggle(String(localized: "Launch remremote automatically at login"), isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { newValue in
+                        try? LoginItem.setEnabled(newValue)
+                        launchAtLogin = LoginItem.isEnabled
+                    }
+                ))
+            }
+
+            Section(String(localized: "Automatic connection")) {
+                Toggle(String(localized: "Connect automatically when remremote starts"), isOn: $settings.autoConnectEnabled)
+                Picker(String(localized: "This Mac"), selection: $settings.autoConnectControlled) {
+                    Text(String(localized: "controls another computer")).tag(false)
+                    Text(String(localized: "is controlled (relay only)")).tag(true)
+                }
+                .pickerStyle(.radioGroup)
+                TextField(String(localized: "Host (host or host:port)"), text: $settings.autoConnectHost)
+                    .autocorrectionDisabled()
+                TextField(String(localized: "Key"), text: $key)
+                    .autocorrectionDisabled()
+                SecureField(String(localized: "Encryption password (optional)"), text: $encryptionPassword)
+                Button(String(localized: "Save autoconnect key")) {
+                    try? KeychainStore.save(
+                        KeychainStore.Secrets(key: key, encryptionPassword: encryptionPassword.isEmpty ? nil : encryptionPassword),
+                        for: AppSettings.autoConnectKeychainID
+                    )
+                }
+                Text("The key and encryption password are stored in the macOS keychain, not in preferences.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .onAppear {
+            if let secrets = KeychainStore.load(for: AppSettings.autoConnectKeychainID) {
+                key = secrets.key
+                encryptionPassword = secrets.encryptionPassword ?? ""
+            }
+        }
     }
 }

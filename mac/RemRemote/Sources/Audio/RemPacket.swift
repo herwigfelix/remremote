@@ -58,6 +58,24 @@ struct RemAudioFormat: Equatable {
             && lhs.codec == rhs.codec && lhs.frameSamplesPerChannel == rhs.frameSamplesPerChannel
     }
 
+    /// Encodes the 44-byte Format payload (with the 8-byte password fingerprint) that the
+    /// controlled Mac sends to declare its Opus 48 kHz stereo stream.
+    static func opusStereoPayload(frameSamplesPerChannel: Int32, fingerprint: Data) -> Data {
+        var data = Data()
+        func put(_ v: Int32) { withUnsafeBytes(of: v.littleEndian) { data.append(contentsOf: $0) } }
+        put(48000)   // sampleRate
+        put(2)       // channels
+        put(32)      // bitsPerSample (float)
+        put(3)       // encoding = IEEE float
+        put(8)       // blockAlign
+        put(384000)  // averageBytesPerSecond
+        put(2)       // codec = Opus
+        put(frameSamplesPerChannel)
+        data.append(contentsOf: [0, 0, 0, 0]) // lane = mixed + padding
+        data.append(fingerprint.prefix(8))
+        return data
+    }
+
     static func parse(_ payload: Data) -> RemAudioFormat? {
         guard payload.count >= 32 else { return nil }
         let bytes = [UInt8](payload)

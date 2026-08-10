@@ -321,6 +321,9 @@ class OptionsDialog(SettingsPanel):
 		# Translators: A checkbox in add-on options dialog to set whether allow or block speech commands
 		self.speech_commands = wx.CheckBox(self, wx.ID_ANY, label=_("Process speech commands when controlling another computer"))
 		sizer.Add(self.speech_commands)
+		# Translators: label of a checkbox in the add-on options to relay the Insert key as VoiceOver keys when controlling a Mac.
+		self.remap_insert_to_voiceover = wx.CheckBox(self, wx.ID_ANY, label=_("When controlling a Mac, send the NVDA key (Insert) as the VoiceOver keys (control+option)"))
+		sizer.Add(self.remap_insert_to_voiceover)
 		# Translators: A checkbox in add-on options dialog to set whether server welcome messages are displayed only once
 		self.motd_once = wx.CheckBox(self, wx.ID_ANY, label=_("Show server welcome messages only once"))
 		sizer.Add(self.motd_once)
@@ -372,6 +375,7 @@ class OptionsDialog(SettingsPanel):
 		# by the other computer, too. Let the add-on find us so the checkbox stays truthful.
 		OptionsDialog.active_panel = self
 		self.speech_commands.SetValue(config['ui']['allow_speech_commands'])
+		self.remap_insert_to_voiceover.SetValue(config['ui']['remap_insert_to_voiceover'])
 		self.motd_once.SetValue(config['ui']['display_motd_once'])
 		self.portcheck.SetValue(config['ui']['portcheck'])
 		self.originalProfileName = NVDAConfig.conf.profiles[-1].name
@@ -441,6 +445,7 @@ class OptionsDialog(SettingsPanel):
 		remote_tts_changed = bool(config['audio']['use_remote_tts']) != bool(remote_tts)
 		config['audio']['use_remote_tts'] = remote_tts
 		config['ui']['allow_speech_commands'] = self.speech_commands.GetValue()
+		config['ui']['remap_insert_to_voiceover'] = self.remap_insert_to_voiceover.GetValue()
 		config['ui']['display_motd_once'] = self.motd_once.GetValue()
 		config['ui']['portcheck'] = self.portcheck.GetValue()
 		if not configuration.readonly:

@@ -72,6 +72,11 @@ REPLY_TIMEOUT_MS = 8000
 #: How long to wait between tearing a stream down and building it back up when the remote
 #: TTS setting changed mid-stream, so the old sender has released the UDP port.
 RESTART_DELAY_MS = 900
+#: Jitter-buffer depth (ms) the receiver uses for RELAYED audio. Relayed streams arrive in
+#: periodic bursts (the far sender's scheduling plus the relay hop), so the buffer must be
+#: deep enough to ride out a burst — measured up to ~100 ms — without underrunning. Direct
+#: connections keep the helper's low-latency default.
+RELAY_JITTER_MS = 150
 #: winget package id of the runtime RemSound.Host.exe needs.
 WINGET_RUNTIME_ID = "Microsoft.DotNet.DesktopRuntime.10"
 #: Evergreen direct-download link (same scheme dotnet-install uses) as a fallback when
@@ -340,6 +345,9 @@ class AudioManager:
 		self._relay_proxy = None
 		#: Master only: the session id sent in audio_start, reused if the reply is "relay".
 		self._audio_session = None
+		#: Master only: True when the controlled computer is a Mac — audio is then the only
+		#: way to hear it, so it is switched on automatically and cannot be turned off.
+		self.forced = False
 
 	def _set_active(self, state):
 		"""Single place where the streaming state changes, so the menu checkbox always
@@ -397,6 +405,7 @@ class AudioManager:
 		self._remote_tts_synced = False
 		self._remote_tts_requested = None
 		self.remote_tts_peer_state = False
+		self.forced = False
 		# Whatever happened, this machine speaks to the controller as text again. Leaving
 		# the gate shut would make a controlled computer silently unreadable.
 		self._set_speech_forwarding(True)
@@ -571,12 +580,41 @@ class AudioManager:
 
 	# === master side ===
 
+	def reset_master_audio(self):
+		"""Tear down any master-side stream and clear the forced lock. Used when the
+		controlled machine leaves: a plain disconnect never sends audio_stop, so without
+		this the stream would stay 'active' and a reconnect's forced-audio request would be
+		suppressed by that stale state (the audio never restarts)."""
+		self.forced = False
+		self._cancel_pending_timer()
+		self.pending = False
+		self._set_active(False)
+		self._stop_runner()
+
+	def set_forced(self, state):
+		"""Controlling a Mac: audio is the only way to hear it, so switch it on and keep it
+		on. Idempotent, but always (re)requests the stream when it should be on and isn't —
+		so a Mac that joins after the controller was already connected still gets its audio
+		requested, even if the forced flag was left set from an earlier session."""
+		self.forced = bool(state)
+		if self.forced and not (self.active or self.pending):
+			transport = self.plugin.master_transport
+			if transport is not None and getattr(transport, "connected", False):
+				self._start_from_master(announce=False)
+
 	def toggle_from_master(self):
 		plugin = self.plugin
 		transport = plugin.master_transport
 		if transport is None or not getattr(transport, "connected", False):
 			# Translators: reported when trying to toggle remote audio while not connected.
 			ui.message(_("Not connected."))
+			return
+		if self.forced:
+			# Controlling a Mac: audio cannot be turned off.
+			if not (self.active or self.pending):
+				self._start_from_master(announce=False)
+			# Translators: reported when trying to turn off audio while controlling a Mac.
+			ui.message(_("macOS does not support this."))
 			return
 		if self.active or self.pending:
 			self._stop_from_master()
@@ -649,7 +687,7 @@ class AudioManager:
 				proxy = RelayAudioProxy()
 				shim_port = proxy.start(relay_host, relay_port, base64.b64decode(self._audio_session))
 				self._relay_proxy = proxy
-				runner.send(cmd="start-recv", password=password, host="127.0.0.1", port=shim_port)
+				runner.send(cmd="start-recv", password=password, host="127.0.0.1", port=shim_port, maxLatency=RELAY_JITTER_MS)
 			else:
 				# The slave hosts: reach out to its UDP port from an ephemeral port,
 				# punching our NAT with sealed hellos.
