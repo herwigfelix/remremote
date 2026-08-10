@@ -1,0 +1,25 @@
+services:
+  relay:
+    build: .
+    image: remremote-relay:latest
+    container_name: remremote-relay
+    restart: unless-stopped
+    # Host networking keeps the client's real source IP/port visible to the UDP audio
+    # relay (it pairs endpoints by address), and avoids Docker's UDP NAT quirks.
+    network_mode: host
+    # Run as root so the container can read the root-owned Let's Encrypt private key
+    # (mode 0600). It only reads the cert and binds ports >1024; nothing else needs root.
+    user: "0:0"
+    environment:
+      REMREMOTE_PORT: "6837"
+      # The live/ files are symlinks into archive/, so the whole tree is mounted below and
+      # the cert is referenced through its live symlink (resolves inside the container).
+      REMREMOTE_TLS_CERT: "/etc/letsencrypt/live/remrem.accessy.org/fullchain.pem"
+      REMREMOTE_TLS_KEY: "/etc/letsencrypt/live/remrem.accessy.org/privkey.pem"
+      # Optional message of the day shown to clients on join:
+      # REMREMOTE_MOTD: "Willkommen beim remremote-Relay (remrem.accessy.org)."
+      REMREMOTE_LOG_LEVEL: "INFO"
+    volumes:
+      # Let's Encrypt tree, renewed by certbot on the host (Apache owns :80). Read-only;
+      # the relay hot-reloads when the files change after a renewal.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
