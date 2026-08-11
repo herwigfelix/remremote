@@ -21,7 +21,7 @@ final class KeyInjector {
     private var heldModifierFlags: CGEventFlags = []
     private let source = CGEventSource(stateID: .combinedSessionState)
 
-    func handle(vkCode: Int, extended: Bool, pressed: Bool) {
+    func handle(vkCode: Int, scanCode: Int, extended: Bool, pressed: Bool) {
         if vkCode == Self.capsLockVK {
             // Caps lock toggles; post it as its own key with the alpha-shift flag.
             post(keyCode: 57, down: pressed, flags: heldModifierFlags)
@@ -29,6 +29,15 @@ final class KeyInjector {
         }
         if let (macCode, flag) = Self.modifiers[vkCode] {
             if pressed { heldModifierFlags.insert(flag) } else { heldModifierFlags.remove(flag) }
+            post(keyCode: macCode, down: pressed, flags: heldModifierFlags)
+            return
+        }
+        // Character keys (letters, number row, OEM punctuation) are injected by PHYSICAL
+        // position via the hardware scan code, so a non-US keyboard on the controlling side
+        // lands on the same physical key here and this Mac's layout produces the right
+        // character. Non-extended only — extended/keypad keys share these scan codes and
+        // must stay on the VK map.
+        if !extended, let macCode = KeyMap.macCharKeyCode(forScan: scanCode) {
             post(keyCode: macCode, down: pressed, flags: heldModifierFlags)
             return
         }

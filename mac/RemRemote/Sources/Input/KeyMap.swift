@@ -230,6 +230,37 @@ enum KeyMap {
         reverseTable[vk]
     }
 
+    /// PC set-1 make scan code -> macOS ANSI virtual key code (physical position), for the
+    /// printable character block only: letters, the number row and the OEM punctuation
+    /// around them, plus the ISO `<>` key. The controlled role injects these by physical
+    /// position so a non-US keyboard on the controlling side (e.g. a German QWERTZ) lands
+    /// on the same physical key here and this Mac's own layout produces the right character
+    /// — the VK map alone would inject the US character at that VK and mis-map z/y, ö, ü, ß…
+    /// Non-character keys (whitespace, navigation, keypad, function, modifiers) carry no
+    /// layout-dependent character and stay on the positional VK map.
+    static let scanToMacCharKey: [Int: Int64] = [
+        // number row: 1 2 3 4 5 6 7 8 9 0 - =
+        0x02: 18, 0x03: 19, 0x04: 20, 0x05: 21, 0x06: 23, 0x07: 22,
+        0x08: 26, 0x09: 28, 0x0A: 25, 0x0B: 29, 0x0C: 27, 0x0D: 24,
+        // top letter row: Q W E R T Y U I O P [ ]
+        0x10: 12, 0x11: 13, 0x12: 14, 0x13: 15, 0x14: 17, 0x15: 16,
+        0x16: 32, 0x17: 34, 0x18: 31, 0x19: 35, 0x1A: 33, 0x1B: 30,
+        // home row: A S D F G H J K L ; ' `
+        0x1E: 0, 0x1F: 1, 0x20: 2, 0x21: 3, 0x22: 5, 0x23: 4,
+        0x24: 38, 0x25: 40, 0x26: 37, 0x27: 41, 0x28: 39, 0x29: 50,
+        // bottom row: \ Z X C V B N M , . /
+        0x2B: 42, 0x2C: 6, 0x2D: 7, 0x2E: 8, 0x2F: 9, 0x30: 11,
+        0x31: 45, 0x32: 46, 0x33: 43, 0x34: 47, 0x35: 44,
+        // ISO `<>` key between left shift and Z
+        0x56: 10,
+    ]
+
+    /// Physical-position key code for a character-block scan code, or nil for keys that
+    /// should stay on the VK map.
+    static func macCharKeyCode(forScan scan: Int) -> Int64? {
+        scanToMacCharKey[scan]
+    }
+
     /// Physical keys in the printable "character" block — letters, the number row and the
     /// OEM punctuation around it. These are mapped by the character the active layout
     /// produces (see LayoutMapper), not by US physical position. Whitespace, navigation,

@@ -47,7 +47,8 @@ final class SlaveController {
                   let vk = message["vk_code"] as? Int,
                   let pressed = message["pressed"] as? Bool else { return }
             let extended = message["extended"] as? Bool ?? false
-            self.keyInjector.handle(vkCode: vk, extended: extended, pressed: pressed)
+            let scanCode = message["scan_code"] as? Int ?? 0
+            self.keyInjector.handle(vkCode: vk, scanCode: scanCode, extended: extended, pressed: pressed)
         }
         session.register("audio_start") { [weak self] message in self?.onAudioStart(message) }
         session.register("audio_stop") { [weak self] _ in self?.stopAudio() }
