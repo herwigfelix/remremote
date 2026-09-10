@@ -146,7 +146,6 @@ class GlobalPlugin(_GlobalPlugin):
 		# hand over from, so autoconnect is the only way in.
 		if cs['autoconnect'] and not self.master_session and not self.slave_session:
 			wx.CallLater(50,self.perform_autoconnect)
-		self.audio.check_runtime_at_startup()
 
 	def perform_autoconnect(self):
 		cs = configuration.get_config()['controlserver']
@@ -841,9 +840,9 @@ class GlobalPlugin(_GlobalPlugin):
 
 	def maybe_offer_firewall_exception(self, port):
 		"""One-time offer, on the very first start of a self-hosted control server, to add
-		Windows Firewall exceptions for NVDA (inbound TCP control connections) and the audio
-		helper (inbound UDP audio). Asked exactly once; the answer is acted on immediately and
-		the question is never repeated either way."""
+		Windows Firewall exceptions for NVDA (inbound TCP control connections and inbound
+		UDP audio). Asked exactly once; the answer is acted on immediately and the question
+		is never repeated either way."""
 		if globalVars.appArgs.secure or configuration.readonly:
 			# We could neither remember the answer nor sensibly show a dialog here; the
 			# menu item stays available for a deliberate manual run.
@@ -865,36 +864,36 @@ class GlobalPlugin(_GlobalPlugin):
 		self.add_firewall_exceptions(port)
 
 	def add_firewall_exceptions(self, port):
-		"""Adds inbound allow rules on the given port for nvda.exe (TCP control) and the bundled
-		audio helper (UDP audio) via an elevated netsh — one cmd.exe invocation, one UAC prompt.
+		"""Adds inbound allow rules on the given port for nvda.exe — TCP for the control
+		connection and UDP for the audio stream, which the audio engine receives inside
+		NVDA's own process — via an elevated netsh: one cmd.exe invocation, one UAC prompt.
 		Control and audio share the same port number, so one number covers the whole session.
 
-		Every pre-existing inbound rule for those two programs is deleted first. This is not
-		just duplicate hygiene: Windows Firewall gives BLOCK rules precedence over allow
-		rules, so a leftover block rule for nvda.exe — which Windows creates silently
-		whenever someone dismisses its "allow this app?" prompt — makes an added allow rule
-		useless and leaves the port unreachable from outside while looking perfectly
-		forwarded in the router. Deleting first and re-adding is the only reliable fix.
+		Every pre-existing inbound rule for nvda.exe is deleted first. This is not just
+		duplicate hygiene: Windows Firewall gives BLOCK rules precedence over allow rules,
+		so a leftover block rule for nvda.exe — which Windows creates silently whenever
+		someone dismisses its "allow this app?" prompt — makes an added allow rule useless
+		and leaves the port unreachable from outside while looking perfectly forwarded in
+		the router. Deleting first and re-adding is the only reliable fix. The rule older
+		versions added for their separate audio helper process is removed by name.
 		profile=any so the rules also apply when Windows has classified the network as
 		public, which is where those block rules usually live.
 		"""
 		buf = ctypes.create_unicode_buffer(260)
 		ctypes.windll.kernel32.GetModuleFileNameW(None, buf, 260)
 		nvda_exe = buf.value
-		host_exe = audio.host_exe_path()
 		commands = (
 			f'netsh advfirewall firewall delete rule name=all dir=in program="{nvda_exe}"'
-			f' & netsh advfirewall firewall delete rule name=all dir=in program="{host_exe}"'
 			' & netsh advfirewall firewall delete rule name="remremote control"'
 			' & netsh advfirewall firewall delete rule name="remremote audio"'
 			f' & netsh advfirewall firewall add rule name="remremote control" dir=in action=allow protocol=tcp localport={port} profile=any program="{nvda_exe}"'
-			f' & netsh advfirewall firewall add rule name="remremote audio" dir=in action=allow protocol=udp localport={port} profile=any program="{host_exe}"'
+			f' & netsh advfirewall firewall add rule name="remremote audio" dir=in action=allow protocol=udp localport={port} profile=any program="{nvda_exe}"'
 		)
 		ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", "cmd.exe", "/c " + commands, None, 0)
 		if ret <= 32:
 			# Launch failed or the user dismissed the UAC prompt.
 			# Translators: reported when the firewall exceptions could not be added.
-			ui.message(_("Could not add the firewall exceptions. You can add NVDA and the audio helper to the Windows Firewall manually."))
+			ui.message(_("Could not add the firewall exceptions. You can add NVDA to the Windows Firewall manually."))
 		else:
 			# Translators: reported after requesting the firewall exceptions.
 			ui.message(_("Firewall exceptions requested. Please confirm the User Account Control prompt if it appears."))

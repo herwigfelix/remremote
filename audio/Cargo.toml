@@ -1,0 +1,45 @@
+[package]
+name = "remremote-audio"
+version = "2026.9.10"
+edition = "2021"
+license = "GPL-2.0"
+description = "remremote's audio streaming engine (RemSound wire format): system-audio capture, Opus, AES-256-GCM over UDP"
+
+[lib]
+name = "remremote_audio"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "remremote-audio-cli"
+path = "src/bin/cli.rs"
+
+[dependencies]
+aes-gcm = "0.11"
+pbkdf2 = { version = "0.13", default-features = false, features = ["hmac"] }
+sha2 = "0.11"
+audiopus_sys = { version = "0.2", features = ["static"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rand = "0.10"
+base64 = "0.23"
+socket2 = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_Multimedia",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+  "Win32_System_Threading",
+  "Win32_Security",
+] }
+windows-core = "0.62"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "unwind"
+strip = "debuginfo"

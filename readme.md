@@ -8,9 +8,9 @@ add-ons it is built on, **hear that computer's audio while you do it**.
 
 It is a fork of [TeleNVDA](https://github.com/nvda-es/TeleNVDA), which is itself a fork of
 [NVDA Remote](https://github.com/nvdaremote/nvdaremote) ([nvdaremote.com](https://nvdaremote.com)).
-The audio streaming is built on [RemSound](https://github.com/Ednunp/RemSound), which ships
-inside the add-on as a small helper process. All three originals are the work of other
-people; see [Credits and licence](#credits-and-licence).
+The audio streaming speaks the wire format of [RemSound](https://github.com/Ednunp/RemSound),
+re-implemented as remremote's own engine (see [Audio engine](#audio-engine)). All three
+originals are the work of other people; see [Credits and licence](#credits-and-licence).
 
 ## What remremote adds
 
@@ -27,8 +27,8 @@ people; see [Credits and licence](#credits-and-licence).
 * **One port to forward.** The audio stream uses the same port number as the control
   server, UDP instead of TCP, and UPnP opens both.
 * **Guided setup for the awkward parts**: an offer to add the Windows Firewall rules the
-  control server needs, and automatic installation of the .NET runtime the audio helper
-  requires.
+  control server needs. Audio streaming needs nothing installed — the engine is a small
+  library inside the add-on.
 * Fixes for the add-on being unreachable inside UAC prompts and other secure desktops.
 
 See [changelog.md](changelog.md) for the full list.
@@ -42,9 +42,9 @@ stream, clipboard sync and the remote speech synthesizer option — lives in
 
 ## Requirements
 
-* Windows, and NVDA 2019.3 or newer, on both computers.
-* For audio streaming only: the .NET 10 Desktop Runtime on both computers. The add-on
-  offers to install it for you when it is missing.
+* Windows, and NVDA 2019.3 or newer, on both computers. The audio engine ships for both
+  64-bit and 32-bit NVDA (the 32-bit build is compiled but has not been tested on a
+  32-bit NVDA yet).
 * Process-level exclusion of NVDA's own audio needs Windows 10 build 19041 or newer. On
   older versions the whole default output device is captured instead, and the add-on
   warns you.
@@ -53,18 +53,37 @@ stream, clipboard sync and the remote speech synthesizer option — lives in
 
 * **There is no official release yet.** The builds published here are development builds.
   An official release will follow only after the macOS app is finished — not before.
-* Audio streaming works over direct connections only. Sessions running through a relay
-  server report `relay_unsupported`; use a control server hosted on one of the two
-  machines.
+* Over a relay, the audio needs a relay that implements remremote's UDP session pairing
+  (the one in [`relay/`](relay/) does; stock NVDA Remote relays do not, so use a control
+  server hosted on one of the two machines with those).
 * IPv4 only for the audio stream. The control connection is unaffected.
-* Rebuilding the bundled audio helper (`RemSound.Host.exe`) needs the RemSound sources,
-  which live in [their own repository](https://github.com/Ednunp/RemSound) and are not
-  part of this one. The compiled helper is committed under
-  `addon/globalPlugins/remoteClient/audioHost/`, so building the add-on itself does not
-  require it.
 * If a control server is running but no session is connected, the copy of NVDA on a
   secure desktop cannot take over the port and stays unreachable for the duration of that
   dialog.
+
+## Audio engine
+
+The audio engine lives in [`audio/`](audio/): a Rust library that NVDA loads directly
+(`addon/globalPlugins/remoteClient/audioEngine/remremote_audio-x64.dll` and `-x86.dll`).
+It captures the system audio with the Windows process-loopback API, encodes it with Opus,
+seals it with AES-256-GCM and ships it over UDP in the RemSound wire format; the receiving
+end decodes into a small jitter buffer and plays it. The same engine speaks to the Mac app
+and to any RemSound-format peer, and it has no runtime dependencies. The compiled DLLs are
+committed, so building the add-on does not need a Rust toolchain; rebuilding them needs
+Rust, CMake and the Visual Studio build tools on Windows:
+
+```
+cd audio
+cargo build --release                                    # 64-bit
+cargo build --release --target i686-pc-windows-msvc      # 32-bit
+cargo test --release
+```
+
+`cargo test` exercises the wire format, the key derivation vectors shared with the Mac
+app, and complete sender/receiver sessions over the loopback interface. The
+`remremote-audio-cli` binary runs one end of a session from a shell (a test tone as the
+source, a raw dump as the sink) and prints the engine's events, which is how the relay
+path and the Windows capture are verified.
 
 ## Building
 

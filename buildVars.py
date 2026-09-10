@@ -14,7 +14,7 @@ addon_info = AddonInfo(
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
 	addon_description= _("""Allows remote control of and remote access to another machine, including streaming the remote computer's audio. remremote is a fork of TeleNVDA, which itself is based on NVDA Remote."""),
 	# version
-	addon_version= "2026.8.108",
+	addon_version= "2026.9.10",
 	# Author(s)
 	addon_author= "Asociación Comunidad Hispanohablante de NVDA <contacto@nvda.es> and other contributors. Original work by Tyler Spivey <tspivey@pcdesk.net>, Christopher Toth <q@q-continuum.net>",
 	# URL for the add-on documentation support
@@ -35,7 +35,7 @@ addon_info = AddonInfo(
 	addon_sourceURL= "https://github.com/herwigfelix/remremote",
 	# Brief changelog for this version
 	# Translators: what's new content for the add-on version to be shown in the add-on store
-	addon_changelog=_("""First remremote release: stream the remote computer's audio from either end (control+shift+NVDA+a), optionally hearing that computer's own speech synthesizer instead of its text speech (control+shift+NVDA+s), keep both clipboards in sync (control+shift+NVDA+k), UPnP port forwarding for both TCP and UDP with a confirmation prompt, and guided installation of the .NET 10 Desktop Runtime when it is missing. Also fixes the add-on staying unreachable inside UAC prompts and other secure desktops."""),
+	addon_changelog=_("""The audio streaming engine is now a small library built into the add-on (written in Rust): the separate helper process and the .NET 10 Desktop Runtime it needed are gone, so audio streaming works with nothing else installed. Same wire format as before, so it interoperates with the Mac app and older versions. Also: stream the remote computer's audio from either end (control+shift+NVDA+a), optionally hearing that computer's own speech synthesizer instead of its text speech (control+shift+NVDA+s), keep both clipboards in sync (control+shift+NVDA+k), UPnP port forwarding for both TCP and UDP with a confirmation prompt, and fixes for the add-on staying unreachable inside UAC prompts and other secure desktops."""),
 )
 
 import os.path

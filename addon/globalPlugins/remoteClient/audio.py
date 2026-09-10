@@ -4,13 +4,15 @@ Streams the controlled (slave) computer's system audio to the controlling (maste
 computer, excluding NVDA's own audio on the slave (speech already travels over the
 control channel — hearing it twice would be useless).
 
-The heavy lifting happens in a bundled .NET helper process, RemSound.Host.exe (see the
-RemSound project: WASAPI process-loopback capture, Opus, AES-256-GCM over UDP). This
-module only manages that subprocess (JSON lines over stdin/stdout) and the control-channel
-handshake:
+The heavy lifting happens in remremote's own audio engine, a Rust library loaded straight
+into NVDA (audioEngine/remremote_audio-*.dll, sources in the repository's audio/
+directory): WASAPI process-loopback capture, Opus, AES-256-GCM over UDP, in the RemSound
+wire format the Mac app speaks too. No helper process and no runtime to install. This
+module only drives that library (a JSON config in, JSON events back on a callback) and
+runs the control-channel handshake:
 
 	master --> slave:  audio_start {master_hosting: bool, port: int|None}
-	slave  --> master: audio_started {mode: "connect"|"host", port: int}
+	slave  --> master: audio_started {mode: "connect"|"host"|"relay", port: int}
 	slave  --> master: audio_error {reason: str}
 	master --> slave:  audio_stop {}
 	slave  --> master: audio_offer {}
@@ -29,23 +31,21 @@ whether it hosts the connection, which is what decides who binds the UDP port.
 Topology: the side that runs the TeleNVDA control server also owns the UDP audio port,
 using the SAME port number as the TCP control server so users only ever forward one port.
 The other side reaches out from an ephemeral port; when the receiver is the reaching side
-it punches its NAT with sealed hello packets the helper generates (see RemSound.Host).
-When neither side hosts (a relayed session), the audio goes through the relay: a local UDP
-shim (RelayAudioProxy) registers an opaque session id with the relay and bridges the
-unmodified helper, and the relay forwards the two ends' packets verbatim — it never holds
-the password or decrypts anything, so the stream stays end-to-end encrypted.
+it punches its NAT with sealed hello packets the engine generates. When neither side hosts
+(a relayed session), both ends register an opaque session id with the relay, which
+forwards their packets verbatim — it never holds the password or decrypts anything, so the
+stream stays end-to-end encrypted.
 
 The audio encryption password is the connection's encryption key when set, otherwise the
 channel key — both sides always agree on those already.
 """
 
 import base64
+import ctypes
 import json
 import logging
 import os
-import select
-import socket
-import subprocess
+import sys
 import threading
 
 import addonHandler
@@ -56,15 +56,19 @@ import wx
 
 from . import configuration
 
-logger = logging.getLogger(__name__)
+try:
+	# NVDA's own log: a plain logging.getLogger() has no handler inside NVDA, so its
+	# output would vanish — and the engine's events are exactly what support needs to see.
+	from logHandler import log as logger
+except ImportError:
+	logger = logging.getLogger(__name__)
 
 try:
 	addonHandler.initTranslation()
 except addonHandler.AddonError:
 	pass
 
-HOST_SUBDIR = "audioHost"
-HOST_EXE = "RemSound.Host.exe"
+ENGINE_SUBDIR = "audioEngine"
 #: How long the master waits for the slave to answer audio_start before assuming the
 #: other end doesn't understand the message (stock NVDA Remote / TeleNVDA silently
 #: ignores unknown message types).
@@ -75,237 +79,97 @@ RESTART_DELAY_MS = 900
 #: Jitter-buffer depth (ms) the receiver uses for RELAYED audio. Relayed streams arrive in
 #: periodic bursts (the far sender's scheduling plus the relay hop), so the buffer must be
 #: deep enough to ride out a burst — measured up to ~100 ms — without underrunning. Direct
-#: connections keep the helper's low-latency default.
+#: connections keep the engine's low-latency default.
 RELAY_JITTER_MS = 150
-#: winget package id of the runtime RemSound.Host.exe needs.
-WINGET_RUNTIME_ID = "Microsoft.DotNet.DesktopRuntime.10"
-#: Evergreen direct-download link (same scheme dotnet-install uses) as a fallback when
-#: winget is unavailable or fails.
-RUNTIME_DOWNLOAD_URL = "https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe"
-#: Exit code the .NET apphost returns when the required framework is missing
-#: (0x80008096, seen either sign-extended or raw depending on who reports it).
-FRAMEWORK_MISSING_EXIT_CODES = (0x80008096, 0x80008096 - 2**32)
 
 
-def host_exe_path():
-	return os.path.join(os.path.dirname(os.path.abspath(__file__)), HOST_SUBDIR, HOST_EXE)
+def engine_dll_path():
+	"""The engine build matching this NVDA's architecture (64-bit NVDA since 2026, 32-bit
+	before; the add-on ships both)."""
+	arch = "x64" if sys.maxsize > 2 ** 32 else "x86"
+	return os.path.join(os.path.dirname(os.path.abspath(__file__)), ENGINE_SUBDIR, f"remremote_audio-{arch}.dll")
 
 
-def runtime_missing():
-	"""Cheap filesystem probe for the .NET 10 Desktop Runtime (no subprocess): look for a
-	10.x folder under dotnet\\shared\\Microsoft.WindowsDesktop.App in the usual roots."""
-	roots = []
-	dotnet_root = os.environ.get("DOTNET_ROOT")
-	if dotnet_root:
-		roots.append(dotnet_root)
-	program_files = os.environ.get("ProgramFiles")
-	if program_files:
-		roots.append(os.path.join(program_files, "dotnet"))
-	for root in roots:
-		shared = os.path.join(root, "shared", "Microsoft.WindowsDesktop.App")
-		try:
-			entries = os.listdir(shared)
-		except OSError:
-			continue
-		if any(entry.startswith("10.") for entry in entries):
-			return False
-	return True
+_EVENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_char_p)
 
 
-#: Registration framing for the dumb UDP relay: magic + version + 32-byte session id.
-RELAY_MAGIC = b"RRLY"
-RELAY_VERSION = 1
-RELAY_REGISTER_INTERVAL = 2.0
+class AudioEngine:
+	"""One running send or receive pipeline inside the audio engine library.
 
-
-class RelayAudioProxy:
-    """A tiny local UDP shim so RemSound.Host can stream through the relay unchanged.
-
-    RemSound.Host only knows how to reach a peer directly (connector mode: send to a
-    host:port, learn the return path from sealed hellos). The relay, however, needs each
-    side to announce an opaque session id so it can pair them. Rather than modify the
-    compiled helper, we run this shim in the middle: RemSound.Host talks to us on
-    127.0.0.1, we register the session with the relay and forward every packet verbatim
-    between RemSound and the relay. End-to-end encryption is untouched — we only move
-    bytes.
-    """
-
-    def __init__(self):
-        self._local_sock = None
-        self._relay_sock = None
-        self._relay_addr = None
-        self._session = None
-        self._remote_side = None  # RemSound.Host's (learned) local address
-        self._thread = None
-        self._running = False
-
-    def start(self, relay_host, relay_port, session_id):
-        """Bind the shim and start forwarding; returns the local port RemSound must use."""
-        self._session = session_id
-        self._relay_addr = (relay_host, int(relay_port))
-        self._local_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._local_sock.bind(("127.0.0.1", 0))
-        self._relay_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._relay_sock.bind(("0.0.0.0", 0))
-        self._running = True
-        self._thread = threading.Thread(target=self._loop, daemon=True, name="remremoteRelayAudioProxy")
-        self._thread.start()
-        return self._local_sock.getsockname()[1]
-
-    def _registration(self):
-        return RELAY_MAGIC + bytes([RELAY_VERSION]) + self._session
-
-    def _loop(self):
-        last_register = 0.0
-        while self._running:
-            # Keep the pairing (and the NAT pinhole) alive.
-            now = _monotonic()
-            if now - last_register >= RELAY_REGISTER_INTERVAL:
-                try:
-                    self._relay_sock.sendto(self._registration(), self._relay_addr)
-                except OSError:
-                    pass
-                last_register = now
-            try:
-                readers, _, _ = select.select([self._local_sock, self._relay_sock], [], [], 0.5)
-            except (OSError, ValueError):
-                break
-            for sock in readers:
-                try:
-                    data, addr = sock.recvfrom(65536)
-                except OSError:
-                    continue
-                if sock is self._local_sock:
-                    # From RemSound.Host → remember where to send replies, forward to relay.
-                    self._remote_side = addr
-                    try:
-                        self._relay_sock.sendto(data, self._relay_addr)
-                    except OSError:
-                        pass
-                else:
-                    # From the relay. Drop its registration acks; forward audio to RemSound.
-                    if len(data) == 5 + 32 and data[:4] == RELAY_MAGIC:
-                        continue
-                    if self._remote_side is not None:
-                        try:
-                            self._local_sock.sendto(data, self._remote_side)
-                        except OSError:
-                            pass
-
-    def stop(self):
-        self._running = False
-        for sock in (self._local_sock, self._relay_sock):
-            if sock is not None:
-                try:
-                    sock.close()
-                except OSError:
-                    pass
-        self._local_sock = None
-        self._relay_sock = None
-
-
-def _monotonic():
-    import time
-    return time.monotonic()
-
-
-class AudioHostRunner:
-	"""Owns one RemSound.Host.exe subprocess: spawn, JSON-line IPC, teardown.
-
-	``on_event`` is called on a background reader thread with each decoded event dict;
-	``on_exit`` is called (also on a background thread) with (returncode, stderr_tail)
-	when the process ends. Callers marshal to the UI thread themselves.
+	``on_event`` is called on one of the engine's background threads with each decoded
+	event dict (started, peer, status, warning, error, diag). Callers marshal to the UI
+	thread themselves. After ``stop()`` returns, no further events are delivered.
 	"""
 
-	def __init__(self, on_event, on_exit):
+	_lib = None
+
+	@classmethod
+	def library(cls):
+		if cls._lib is None:
+			path = engine_dll_path()
+			if not os.path.isfile(path):
+				raise FileNotFoundError(path)
+			lib = ctypes.CDLL(path)
+			lib.remremote_audio_version.argtypes = []
+			lib.remremote_audio_version.restype = ctypes.c_char_p
+			lib.remremote_audio_start.argtypes = [ctypes.c_char_p, _EVENT_CALLBACK, ctypes.c_void_p]
+			lib.remremote_audio_start.restype = ctypes.c_void_p
+			lib.remremote_audio_stop.argtypes = [ctypes.c_void_p]
+			lib.remremote_audio_stop.restype = None
+			lib.remremote_audio_last_error.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
+			lib.remremote_audio_last_error.restype = ctypes.c_size_t
+			logger.info("audio engine %s loaded from %s", lib.remremote_audio_version().decode("utf-8", "replace"), path)
+			cls._lib = lib
+		return cls._lib
+
+	@classmethod
+	def available(cls):
+		try:
+			cls.library()
+		except OSError:
+			return False
+		return True
+
+	def __init__(self, on_event):
 		self.on_event = on_event
-		self.on_exit = on_exit
-		self.proc = None
-		self._stderr_tail = []
-		self._lock = threading.Lock()
-		self.expected_exit = False
+		self.handle = None
+		# The engine calls this from its own threads for as long as it runs; the reference
+		# has to outlive the stream, so it lives on the instance.
+		self._callback = _EVENT_CALLBACK(self._dispatch)
 
-	def start(self):
-		path = host_exe_path()
-		if not os.path.isfile(path):
-			raise FileNotFoundError(path)
-		startupinfo = subprocess.STARTUPINFO()
-		startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-		self.proc = subprocess.Popen(
-			[path],
-			stdin=subprocess.PIPE,
-			stdout=subprocess.PIPE,
-			stderr=subprocess.PIPE,
-			cwd=os.path.dirname(path),
-			startupinfo=startupinfo,
-			creationflags=subprocess.CREATE_NO_WINDOW,
-		)
-		threading.Thread(target=self._read_stdout, daemon=True, name="remremoteAudioHostReader").start()
-		threading.Thread(target=self._read_stderr, daemon=True, name="remremoteAudioHostStderr").start()
-
-	def send(self, **command):
-		with self._lock:
-			proc = self.proc
-			if proc is None or proc.poll() is not None:
-				raise OSError("audio host process is not running")
-			proc.stdin.write((json.dumps(command) + "\n").encode("utf-8"))
-			proc.stdin.flush()
-
-	def stop(self):
-		"""Graceful-then-forceful shutdown. Safe to call twice."""
-		self.expected_exit = True
-		proc = self.proc
-		if proc is None:
+	def _dispatch(self, user_data, text):
+		try:
+			event = json.loads(text.decode("utf-8"))
+		except (ValueError, AttributeError, UnicodeDecodeError):
+			logger.warning("audio engine emitted a non-JSON event: %r", text)
 			return
 		try:
-			self.send(cmd="quit")
-		except OSError:
-			pass
-		try:
-			proc.wait(timeout=2)
-		except subprocess.TimeoutExpired:
-			try:
-				proc.kill()
-			except OSError:
-				pass
-		self.proc = None
+			self.on_event(event)
+		except Exception:
+			logger.exception("audio engine event handler failed")
 
-	def _read_stdout(self):
-		proc = self.proc
-		try:
-			for line in proc.stdout:
-				line = line.strip()
-				if not line:
-					continue
-				try:
-					event = json.loads(line.decode("utf-8"))
-				except ValueError:
-					logger.warning("audio host emitted non-JSON line: %r", line)
-					continue
-				try:
-					self.on_event(event)
-				except Exception:
-					logger.exception("audio host event handler failed")
-		except (OSError, ValueError):
-			pass
-		code = proc.wait()
-		# A stop() we initiated ourselves is not an "unexpected death" — only report exits
-		# nobody asked for. Checked here (not in the manager) because the manager drops its
-		# runner reference before the process actually finishes quitting.
-		if not self.expected_exit:
-			self.on_exit(code, "\n".join(self._stderr_tail))
+	@property
+	def running(self):
+		return self.handle is not None
 
-	def _read_stderr(self):
-		proc = self.proc
-		try:
-			for line in proc.stderr:
-				text = line.decode("utf-8", errors="replace").strip()
-				if text:
-					self._stderr_tail.append(text)
-					del self._stderr_tail[:-10]
-					logger.debug("audio host stderr: %s", text)
-		except (OSError, ValueError):
-			pass
+	def start(self, **config):
+		"""Start a pipeline; ``config`` is the engine's JSON config (mode, password, bindPort,
+		host, port, excludePid, maxLatency, relaySession). Raises OSError with the engine's
+		own message when it cannot start."""
+		lib = self.library()
+		self.stop()
+		handle = lib.remremote_audio_start(json.dumps(config).encode("utf-8"), self._callback, None)
+		if not handle:
+			buf = ctypes.create_string_buffer(2048)
+			lib.remremote_audio_last_error(buf, len(buf))
+			raise OSError(buf.value.decode("utf-8", "replace") or "the audio engine failed to start")
+		self.handle = handle
+
+	def stop(self):
+		"""Stops the pipeline and joins its threads. Safe to call twice."""
+		handle, self.handle = self.handle, None
+		if handle:
+			self.library().remremote_audio_stop(handle)
 
 
 class AudioManager:
@@ -315,7 +179,9 @@ class AudioManager:
 
 	def __init__(self, plugin):
 		self.plugin = plugin
-		self.runner = None
+		#: The engine pipeline of the current stream (sender on the slave, receiver on the master).
+		self.engine = None
+		self._status_events = 0
 		#: True once audio is (being) streamed in either direction.
 		self.active = False
 		#: Master only: waiting for the slave's audio_started/audio_error reply.
@@ -339,10 +205,6 @@ class AudioManager:
 		self._remote_tts_requested = None
 		#: Master only: pending stream rebuild after the setting changed mid-stream.
 		self._restart_timer = None
-		#: True while a background .NET runtime installation is in flight.
-		self._install_running = False
-		#: Local UDP shim bridging RemSound.Host to the relay (relayed sessions only).
-		self._relay_proxy = None
 		#: Master only: the session id sent in audio_start, reused if the reply is "relay".
 		self._audio_session = None
 		#: Master only: True when the controlled computer is a Mac — audio is then the only
@@ -373,26 +235,21 @@ class AudioManager:
 	def _password(self, transport):
 		return transport.encryption_key or transport.channel
 
-	def _ensure_runner(self):
-		if self.runner is not None and self.runner.proc is not None and self.runner.proc.poll() is None:
-			return self.runner
-		runner = AudioHostRunner(self._on_host_event, self._on_host_exit)
-		runner.start()
-		self.runner = runner
-		return runner
+	def _new_engine(self):
+		"""A fresh pipeline for the stream about to start; whatever ran before is stopped."""
+		self._stop_engine()
+		engine = AudioEngine(self._on_engine_event)
+		self.engine = engine
+		self._status_events = 0
+		return engine
 
-	def _stop_runner(self):
-		runner = self.runner
-		self.runner = None
-		if runner is not None:
-			threading.Thread(target=runner.stop, daemon=True).start()
-		self._stop_relay_proxy()
-
-	def _stop_relay_proxy(self):
-		proxy = self._relay_proxy
-		self._relay_proxy = None
-		if proxy is not None:
-			threading.Thread(target=proxy.stop, daemon=True).start()
+	def _stop_engine(self):
+		engine = self.engine
+		self.engine = None
+		if engine is not None:
+			# Stopping joins the engine's threads (a few hundred ms at most); keep that off
+			# the UI thread. Events from the old pipeline are ignored: it is no longer ours.
+			threading.Thread(target=engine.stop, daemon=True).start()
 
 	def shutdown(self):
 		"""Stop everything without touching the control channel (used on disconnect
@@ -410,7 +267,7 @@ class AudioManager:
 		# the gate shut would make a controlled computer silently unreadable.
 		self._set_speech_forwarding(True)
 		self._set_active(False)
-		self._stop_runner()
+		self._stop_engine()
 
 	# === toggling (gesture and menu item) ===
 
@@ -589,7 +446,7 @@ class AudioManager:
 		self._cancel_pending_timer()
 		self.pending = False
 		self._set_active(False)
-		self._stop_runner()
+		self._stop_engine()
 
 	def set_forced(self, state):
 		"""Controlling a Mac: audio is the only way to hear it, so switch it on and keep it
@@ -651,7 +508,7 @@ class AudioManager:
 			plugin.master_transport.send(type="audio_stop")
 		except (TypeError, OSError):
 			logger.exception("could not send audio_stop")
-		self._stop_runner()
+		self._stop_engine()
 		if announce:
 			# Translators: reported when remote audio streaming has been turned off.
 			ui.message(_("Remote audio off"))
@@ -660,7 +517,7 @@ class AudioManager:
 		if not self.pending:
 			return
 		self.pending = False
-		self._stop_runner()
+		self._stop_engine()
 		# Translators: reported when the controlled computer never answered the audio request.
 		ui.message(_("No response. The remote computer may not support audio streaming (remremote required on both ends)."))
 
@@ -675,30 +532,28 @@ class AudioManager:
 			return
 		password = self._password(transport)
 		try:
-			runner = self._ensure_runner()
+			engine = self._new_engine()
 			if mode == "connect":
 				# We host the connection: bind the UDP twin of our control-server port and
 				# let the slave's audio stream find us there.
-				runner.send(cmd="start-recv", password=password, bindPort=plugin.server.port)
+				engine.start(mode="recv", password=password, bindPort=plugin.server.port)
 			elif mode == "relay":
 				# Relayed session: both ends meet at the relay (the same host we use for
-				# control). A local shim registers our session id and bridges the helper.
+				# control), registering the session id so it can pair us with the sender.
 				relay_host, relay_port = transport.address
-				proxy = RelayAudioProxy()
-				shim_port = proxy.start(relay_host, relay_port, base64.b64decode(self._audio_session))
-				self._relay_proxy = proxy
-				runner.send(cmd="start-recv", password=password, host="127.0.0.1", port=shim_port, maxLatency=RELAY_JITTER_MS)
+				engine.start(
+					mode="recv", password=password, host=relay_host, port=int(relay_port),
+					relaySession=self._audio_session, maxLatency=RELAY_JITTER_MS,
+				)
 			else:
 				# The slave hosts: reach out to its UDP port from an ephemeral port,
 				# punching our NAT with sealed hellos.
-				runner.send(cmd="start-recv", password=password, host=transport.address[0], port=int(port))
-		except (OSError, FileNotFoundError, TypeError, ValueError):
+				engine.start(mode="recv", password=password, host=transport.address[0], port=int(port))
+		except (OSError, TypeError, ValueError) as error:
 			logger.exception("failed to start local audio receiver")
-			if runtime_missing():
-				self._offer_runtime_install()
-			else:
-				# Translators: reported when the local audio receiver could not be started.
-				ui.message(_("Could not start the audio receiver. See the NVDA log for details."))
+			self._stop_engine()
+			# Translators: reported when the local audio receiver could not be started; {error} is the engine's message.
+			ui.message(_("Could not start the audio receiver: {error}").format(error=error))
 			try:
 				transport.send(type="audio_stop")
 			except (TypeError, OSError):
@@ -738,7 +593,7 @@ class AudioManager:
 		self._cancel_pending_timer()
 		self.pending = False
 		self._set_active(False)
-		self._stop_runner()
+		self._stop_engine()
 		# Translators: reported when the controlled computer stopped sharing its audio.
 		ui.message(_("The remote computer stopped sharing its audio"))
 
@@ -746,13 +601,15 @@ class AudioManager:
 		self._cancel_pending_timer()
 		self.pending = False
 		self._set_active(False)
-		self._stop_runner()
+		self._stop_engine()
 		if reason == "relay_unsupported":
 			# Translators: reported when audio streaming was requested over a relayed connection.
 			message = _("Audio streaming is not available over relay connections yet. Use a direct connection (control server).")
 		elif reason == "dotnet_missing":
-			# Translators: reported when the remote computer lacks the .NET runtime for audio streaming.
-			message = _("The remote computer cannot stream audio: the .NET 10 Desktop Runtime is missing there.")
+			# Older remremote versions needed a runtime for their audio helper; a peer still
+			# running one of them may report that.
+			# Translators: reported when an older remote computer lacks the .NET runtime its audio helper needed.
+			message = _("The remote computer cannot stream audio: it runs an older remremote whose audio helper needs the .NET 10 Desktop Runtime, which is missing there.")
 		else:
 			# Translators: reported when the remote computer failed to start audio streaming; {reason} is an error code.
 			message = _("The remote computer could not start audio streaming ({reason}).").format(reason=reason)
@@ -802,7 +659,7 @@ class AudioManager:
 		self._pending_remote_tts = False
 		self._set_speech_forwarding(True)
 		self._set_active(False)
-		self._stop_runner()
+		self._stop_engine()
 		try:
 			if transport is not None:
 				transport.send(type="audio_stopped")
@@ -830,24 +687,19 @@ class AudioManager:
 			self.remote_tts_peer_state = bool(remote_tts)
 			self._remote_tts_synced = True
 		# When the controller wants to hear our own voice, NVDA has to stay IN the captured
-		# audio — so no excludePid. Leaving it out makes the helper capture the whole default
+		# audio — so no excludePid. Leaving it out makes the engine capture the whole default
 		# output device, which is exactly what we want here.
 		self._pending_remote_tts = self.remote_tts_peer_state
 		exclude = {} if self._pending_remote_tts else {"excludePid": os.getpid()}
 		password = self._password(transport)
 		try:
-			runner = self._ensure_runner()
-		except (OSError, FileNotFoundError):
-			logger.exception("audio host could not be started")
-			self._send_slave_error(transport, "host_start_failed")
-			return
-		try:
+			engine = self._new_engine()
 			if master_hosting:
 				# The master owns the well-known UDP port on its end; stream straight at it.
 				target_port = int(port) if port else transport.address[1]
 				self._pending_reply = ("connect", target_port)
-				runner.send(
-					cmd="start-send", password=password,
+				engine.start(
+					mode="send", password=password,
 					host=transport.address[0], port=target_port,
 					**exclude,
 				)
@@ -855,32 +707,30 @@ class AudioManager:
 				# We host the connection: bind the UDP twin of our control-server port and
 				# wait for the master's sealed hello to learn the return path.
 				self._pending_reply = ("host", plugin.server.port)
-				runner.send(
-					cmd="start-send", password=password,
+				engine.start(
+					mode="send", password=password,
 					bindPort=plugin.server.port,
 					**exclude,
 				)
 			elif audio_session:
 				# Neither side hosts: route the audio through the relay (the same host we
-				# use for control). A local shim registers our session id and bridges the
-				# helper to the relay, which pairs us with the master and forwards verbatim.
+				# use for control), registering the session id so it pairs us with the
+				# master and forwards our packets verbatim.
 				relay_host, relay_port = transport.address
-				proxy = RelayAudioProxy()
-				shim_port = proxy.start(relay_host, relay_port, base64.b64decode(audio_session))
-				self._relay_proxy = proxy
 				self._pending_reply = ("relay", relay_port)
-				runner.send(
-					cmd="start-send", password=password,
-					host="127.0.0.1", port=shim_port,
+				engine.start(
+					mode="send", password=password,
+					host=relay_host, port=int(relay_port), relaySession=audio_session,
 					**exclude,
 				)
 			else:
 				# Neither side hosts and the master is too old to offer a relay session.
 				self._send_slave_error(transport, "relay_unsupported")
 				return
-		except OSError:
-			logger.exception("audio host rejected the start command")
+		except (OSError, TypeError, ValueError):
+			logger.exception("the audio engine could not start the sender")
 			self._pending_reply = None
+			self._stop_engine()
 			self._send_slave_error(transport, "host_start_failed")
 			return
 
@@ -894,7 +744,7 @@ class AudioManager:
 		self._pending_remote_tts = False
 		# The controller can no longer hear us; speech goes back on the control channel.
 		self._set_speech_forwarding(True)
-		self._stop_runner()
+		self._stop_engine()
 		# Translators: reported on the controlled computer when the controller stopped audio streaming.
 		ui.message(_("Stopped streaming audio to the controlling computer"))
 
@@ -904,17 +754,20 @@ class AudioManager:
 		except (TypeError, OSError):
 			logger.exception("could not send audio_error")
 
-	# === helper process events (background threads — marshal to the UI thread) ===
+	# === engine events (background threads — marshal to the UI thread) ===
 
-	def _on_host_event(self, event):
+	def _on_engine_event(self, event):
 		name = event.get("event")
 		if name == "started":
-			wx.CallAfter(self._on_host_started, event)
+			wx.CallAfter(self._on_engine_started, event)
 		elif name == "error":
-			logger.error("audio host error: %s", event.get("message"))
-			wx.CallAfter(self._on_host_error, event)
+			logger.error("audio engine error: %s", event.get("message"))
+			if event.get("fatal"):
+				wx.CallAfter(self._on_engine_died, event.get("message") or "unknown error")
+			else:
+				wx.CallAfter(self._on_engine_error, event)
 		elif name == "warning":
-			logger.warning("audio host warning: %s", event.get("message"))
+			logger.warning("audio engine warning: %s", event.get("message"))
 			if event.get("code") == "exclude-unsupported":
 				# Translators: reported on the controlled computer when NVDA's audio cannot be
 				# excluded from the stream because Windows is too old.
@@ -922,11 +775,17 @@ class AudioManager:
 		elif name == "peer":
 			logger.info("audio peer confirmed: %s", event.get("endpoint"))
 		elif name == "diag":
-			logger.debug("audio host: %s", event.get("message"))
+			logger.debug("audio engine: %s", event.get("message"))
 		elif name == "status":
-			logger.debug("audio host status: %s", event)
+			# One line every ~30 s at info level (the engine reports every 2 s), so a log from
+			# a user always shows whether audio actually flowed; the rest at debug.
+			self._status_events += 1
+			if self._status_events % 15 == 1:
+				logger.info("audio engine status: %s", event)
+			else:
+				logger.debug("audio engine status: %s", event)
 
-	def _on_host_started(self, event):
+	def _on_engine_started(self, event):
 		plugin = self.plugin
 		if event.get("mode") == "send":
 			reply = self._pending_reply
@@ -938,7 +797,7 @@ class AudioManager:
 			self._set_active(True)
 			# THE point at which our text speech goes quiet: not when the setting changed,
 			# but now, with the sender confirmed running. Anything earlier could leave this
-			# computer sending neither text nor audio if the helper failed to start.
+			# computer sending neither text nor audio if the engine failed to start.
 			if self._pending_remote_tts:
 				self._set_speech_forwarding(False)
 			transport.send(
@@ -952,158 +811,40 @@ class AudioManager:
 				# Translators: reported on the controlled computer when audio streaming starts.
 				ui.message(_("Streaming audio to the controlling computer"))
 
-	def _on_host_error(self, event):
+	def _on_engine_error(self, event):
+		"""A non-fatal problem the user should hear about (e.g. the two passwords differ)."""
 		message = event.get("message") or "unknown error"
-		plugin = self.plugin
-		reply = self._pending_reply
-		if reply is not None and plugin.slave_transport is not None:
-			# The slave-side helper failed before we ever confirmed to the master.
-			self._pending_reply = None
-			self._pending_remote_tts = False
-			self._set_speech_forwarding(True)
-			self._send_slave_error(plugin.slave_transport, "host_start_failed")
-			self._stop_runner()
-			return
-		# Translators: reported when the local audio helper reports an error; {error} is its message.
+		# Translators: reported when the audio engine reports an error; {error} is its message.
 		ui.message(_("Audio error: {error}").format(error=message))
 
-	def _on_host_exit(self, code, stderr_tail):
-		logger.warning("audio host exited unexpectedly with code %s: %s", code, stderr_tail)
-		low = stderr_tail.lower()
-		dotnet_missing = (
-			code in FRAMEWORK_MISSING_EXIT_CODES
-			or "windowsdesktop.app" in low
-			or ("install" in low and ".net" in low)
-			or runtime_missing()
-		)
-		wx.CallAfter(self._on_host_died, dotnet_missing)
-
-	def _on_host_died(self, dotnet_missing):
+	def _on_engine_died(self, message):
+		"""The running pipeline stopped on its own (a device vanished, capture failed)."""
+		logger.warning("audio engine pipeline stopped unexpectedly: %s", message)
 		plugin = self.plugin
 		was_active = self.active
 		reply = self._pending_reply
 		self._pending_reply = None
 		self.offering = False
 		self._pending_remote_tts = False
-		# The helper is gone, so nothing carries our voice any more — speak as text again,
+		# The pipeline is gone, so nothing carries our voice any more — speak as text again,
 		# or this computer would be silent to the controller with no way to notice why.
 		self._set_speech_forwarding(True)
 		self._set_active(False)
-		self.runner = None
-		self._stop_relay_proxy()
+		self._stop_engine()
 		if reply is not None and plugin.slave_transport is not None:
-			self._send_slave_error(
-				plugin.slave_transport,
-				"dotnet_missing" if dotnet_missing else "host_start_failed",
-			)
-			# Fall through: the slave user is the one whose machine lacks the runtime, so
-			# they get the install offer too — the master can only relay the bad news.
-		elif was_active and plugin.slave_transport is not None:
+			# Died before we ever confirmed to the master.
+			self._send_slave_error(plugin.slave_transport, "host_start_failed")
+			return
+		if was_active and plugin.slave_transport is not None:
 			# We were the one streaming: tell the controller so its receiver (and its
 			# checkbox) don't sit there waiting for audio that will never arrive.
 			try:
 				plugin.slave_transport.send(type="audio_stopped")
 			except (TypeError, OSError):
 				logger.exception("could not send audio_stopped")
-		if dotnet_missing:
-			self._offer_runtime_install()
-		elif was_active:
-			# Translators: reported when the audio helper process died while streaming.
-			ui.message(_("Audio streaming stopped unexpectedly"))
-
-	# === .NET runtime detection and guided installation ===
-
-	def check_runtime_at_startup(self):
-		"""Called once after NVDA startup: if the runtime for the bundled audio helper is
-		missing, offer to install it — unless the user previously declined permanently."""
-		if globalVars.appArgs.secure or configuration.readonly:
-			return
-		try:
-			if configuration.get_config()["audio"]["runtime_prompt_dismissed"]:
-				return
-		except KeyError:
-			pass
-		if not runtime_missing():
-			return
-		# Give NVDA's own startup (and a possible autoconnect) a moment before going modal.
-		wx.CallLater(3000, self._startup_runtime_prompt)
-
-	def _startup_runtime_prompt(self):
-		if runtime_missing() is False:
-			return
-		is_modal_active = getattr(getattr(gui, "message", None), "isModalMessageBoxActive", None)
-		if is_modal_active is not None and is_modal_active():
-			# Don't stack on top of another modal dialog at startup; the offer will come
-			# back the next time audio is actually used.
-			return
-		result = gui.messageBox(
-			# Translators: question asked at NVDA startup when the .NET runtime for audio streaming is missing.
-			message=_("remremote's audio streaming needs the .NET 10 Desktop Runtime, which is not installed on this computer. Do you want to install it now? If you choose no, you won't be asked at startup again, but audio streaming will offer the installation when used."),
-			# Translators: title of the missing runtime question.
-			caption=_("Audio streaming component missing"),
-			style=wx.YES | wx.NO | wx.ICON_QUESTION)
-		if result == wx.YES:
-			self._install_runtime_async()
-		else:
-			conf = configuration.get_config()
-			conf["audio"]["runtime_prompt_dismissed"] = True
-			conf.write()
-
-	def _offer_runtime_install(self):
-		if self._install_running:
-			# Translators: reported when the runtime installation is still in progress.
-			ui.message(_("The .NET runtime installation is still running. Please wait."))
-			return
-		result = gui.messageBox(
-			# Translators: question asked when audio streaming failed because the .NET runtime is missing.
-			message=_("Audio streaming needs the .NET 10 Desktop Runtime, which is not installed. Do you want to install it now?"),
-			# Translators: title of the missing runtime question.
-			caption=_("Audio streaming component missing"),
-			style=wx.YES | wx.NO | wx.ICON_QUESTION)
-		if result == wx.YES:
-			self._install_runtime_async()
-
-	def _install_runtime_async(self):
-		self._install_running = True
-		# Translators: reported while the .NET runtime is being installed in the background.
-		ui.message(_("Installing the .NET 10 Desktop Runtime in the background. You may see a User Account Control prompt — please confirm it. You will be notified when the installation finishes."))
-		threading.Thread(target=self._install_runtime, daemon=True, name="remremoteRuntimeInstall").start()
-
-	def _install_runtime(self):
-		ok = False
-		try:
-			startupinfo = subprocess.STARTUPINFO()
-			startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-			result = subprocess.run(
-				["winget", "install", WINGET_RUNTIME_ID,
-					"--accept-source-agreements", "--accept-package-agreements", "--silent"],
-				capture_output=True, timeout=900,
-				startupinfo=startupinfo, creationflags=subprocess.CREATE_NO_WINDOW,
-			)
-			logger.info("winget runtime install finished with code %s", result.returncode)
-			ok = result.returncode == 0
-		except (OSError, subprocess.TimeoutExpired):
-			logger.exception("winget runtime installation failed")
-		self._install_running = False
-		# Trust the filesystem over winget's exit code (it reports oddities like
-		# "already installed" as non-zero).
-		if not runtime_missing():
-			# Translators: reported when the .NET runtime finished installing.
-			wx.CallAfter(ui.message, _("The .NET 10 Desktop Runtime has been installed. You can use audio streaming now."))
-		elif ok:
-			# winget claims success but the probe can't see it yet (per-machine path oddity).
-			# Translators: reported when the runtime install finished but couldn't be verified.
-			wx.CallAfter(ui.message, _("The runtime installation finished. If audio streaming still fails, please restart the computer."))
-		else:
-			wx.CallAfter(self._runtime_install_fallback)
-
-	def _runtime_install_fallback(self):
-		try:
-			os.startfile(RUNTIME_DOWNLOAD_URL)
-		except OSError:
-			logger.exception("could not open runtime download URL")
-		# Translators: reported when automatic runtime installation failed and the download page was opened instead.
-		ui.message(_("Automatic installation did not work. The .NET 10 Desktop Runtime download has been started in your browser — please run the downloaded installer manually."))
+		if was_active:
+			# Translators: reported when the audio pipeline stopped while streaming; {error} is the engine's message.
+			ui.message(_("Audio streaming stopped unexpectedly: {error}").format(error=message))
 
 	def _cancel_pending_timer(self):
 		# Both timers die here: every explicit start, stop or error supersedes a pending
