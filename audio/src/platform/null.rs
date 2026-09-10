@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use super::PlayoutSink;
+use super::{PlayoutInfo, PlayoutSink};
 use crate::jitter::PlayoutBuffer;
 
 pub struct NullPlayout {
@@ -25,8 +25,12 @@ impl NullPlayout {
 }
 
 impl PlayoutSink for NullPlayout {
-    fn start(&mut self, buffer: Arc<Mutex<PlayoutBuffer>>, mut on_fatal: Box<dyn FnMut(String) + Send>) -> Result<(), String> {
+    fn start(&mut self, buffer: Arc<Mutex<PlayoutBuffer>>, mut on_fatal: Box<dyn FnMut(String) + Send>) -> Result<PlayoutInfo, String> {
         let stop = self.stop.clone();
+        let description = match &self.dump {
+            Some(path) => format!("raw dump to {}", path.display()),
+            None => "discarded (no sound card)".to_string(),
+        };
         let mut writer = match &self.dump {
             Some(path) => Some(BufWriter::new(File::create(path).map_err(|e| format!("{}: {e}", path.display()))?)),
             None => None,
@@ -61,7 +65,7 @@ impl PlayoutSink for NullPlayout {
                 })
                 .map_err(|e| e.to_string())?,
         );
-        Ok(())
+        Ok(PlayoutInfo { warning: None, description })
     }
 
     fn stop(&mut self) {

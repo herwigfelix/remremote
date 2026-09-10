@@ -53,6 +53,7 @@ import globalVars
 import gui
 import ui
 import wx
+from config import conf as nvda_conf
 
 from . import configuration
 
@@ -91,6 +92,26 @@ def engine_dll_path():
 
 
 _EVENT_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_char_p)
+
+
+def nvda_output_device():
+	"""The output device NVDA is set to use, as engine config fields: the endpoint id
+	NVDA 2025.1+ stores under audio.outputDevice, or the WinMM device name older versions
+	store under speech.outputDevice. Empty when NVDA uses the system default."""
+	try:
+		device = nvda_conf["audio"]["outputDevice"]
+		if device and device != "default":
+			return {"outputDevice": device}
+		return {}
+	except KeyError:
+		pass
+	try:
+		device = nvda_conf["speech"]["outputDevice"]
+		if device and device != "Microsoft Sound Mapper":
+			return {"outputDeviceName": device}
+	except KeyError:
+		pass
+	return {}
 
 
 class AudioEngine:
@@ -531,24 +552,27 @@ class AudioManager:
 		if transport is None:
 			return
 		password = self._password(transport)
+		# The remote audio plays where NVDA's own audio does: the device from NVDA's audio
+		# settings, not necessarily the Windows default.
+		device = nvda_output_device()
 		try:
 			engine = self._new_engine()
 			if mode == "connect":
 				# We host the connection: bind the UDP twin of our control-server port and
 				# let the slave's audio stream find us there.
-				engine.start(mode="recv", password=password, bindPort=plugin.server.port)
+				engine.start(mode="recv", password=password, bindPort=plugin.server.port, **device)
 			elif mode == "relay":
 				# Relayed session: both ends meet at the relay (the same host we use for
 				# control), registering the session id so it can pair us with the sender.
 				relay_host, relay_port = transport.address
 				engine.start(
 					mode="recv", password=password, host=relay_host, port=int(relay_port),
-					relaySession=self._audio_session, maxLatency=RELAY_JITTER_MS,
+					relaySession=self._audio_session, maxLatency=RELAY_JITTER_MS, **device,
 				)
 			else:
 				# The slave hosts: reach out to its UDP port from an ephemeral port,
 				# punching our NAT with sealed hellos.
-				engine.start(mode="recv", password=password, host=transport.address[0], port=int(port))
+				engine.start(mode="recv", password=password, host=transport.address[0], port=int(port), **device)
 		except (OSError, TypeError, ValueError) as error:
 			logger.exception("failed to start local audio receiver")
 			self._stop_engine()
@@ -690,7 +714,10 @@ class AudioManager:
 		# audio — so no excludePid. Leaving it out makes the engine capture the whole default
 		# output device, which is exactly what we want here.
 		self._pending_remote_tts = self.remote_tts_peer_state
-		exclude = {} if self._pending_remote_tts else {"excludePid": os.getpid()}
+		# ... and in that case the whole device that NVDA's own audio goes to is captured,
+		# so its voice is in the stream even when NVDA plays on a device other than the
+		# Windows default.
+		exclude = nvda_output_device() if self._pending_remote_tts else {"excludePid": os.getpid()}
 		password = self._password(transport)
 		try:
 			engine = self._new_engine()
@@ -772,6 +799,9 @@ class AudioManager:
 				# Translators: reported on the controlled computer when NVDA's audio cannot be
 				# excluded from the stream because Windows is too old.
 				wx.CallAfter(ui.message, _("Warning: NVDA's own audio cannot be excluded from the stream on this version of Windows."))
+			elif event.get("code") == "device-missing":
+				# Translators: reported when the output device from NVDA's audio settings is unavailable for remote audio.
+				wx.CallAfter(ui.message, _("Warning: the output device selected in NVDA's audio settings is unavailable; remote audio uses the default output device."))
 		elif name == "peer":
 			logger.info("audio peer confirmed: %s", event.get("endpoint"))
 		elif name == "diag":

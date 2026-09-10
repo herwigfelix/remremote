@@ -10,7 +10,9 @@
 //! ```
 //!
 //! `config_json`: `{"mode": "send"|"recv", "password": "...", "bindPort": 0, "host": "...",
-//! "port": 6837, "excludePid": 0, "maxLatency": 0, "relaySession": "<base64 32 bytes>"}`.
+//! "port": 6837, "excludePid": 0, "maxLatency": 0, "relaySession": "<base64 32 bytes>",
+//! "outputDevice": "<endpoint id>" | "outputDeviceName": "<friendly name>"}` — the device
+//! fields pick the output device (playout, and whole-device capture); absent = system default.
 //! Events are the same JSON objects the engine emits, delivered on worker threads.
 
 use std::cell::RefCell;
@@ -22,7 +24,7 @@ use base64::Engine as _;
 use serde::Deserialize;
 
 use crate::engine::{self, EventSink, RecvConfig, Receiver, SendConfig, Sender};
-use crate::platform;
+use crate::platform::{self, DeviceSelection};
 
 pub type EventCallback = Option<unsafe extern "C" fn(*mut c_void, *const c_char)>;
 
@@ -61,6 +63,18 @@ struct Config {
     max_latency: u32,
     #[serde(default)]
     relay_session: Option<String>,
+    #[serde(default)]
+    output_device: Option<String>,
+    #[serde(default)]
+    output_device_name: Option<String>,
+}
+
+fn device_selection(id: Option<String>, name: Option<String>) -> DeviceSelection {
+    match (id.filter(|s| !s.is_empty() && s != "default"), name.filter(|s| !s.is_empty())) {
+        (Some(id), _) => DeviceSelection::Id(id),
+        (None, Some(name)) => DeviceSelection::Name(name),
+        (None, None) => DeviceSelection::Default,
+    }
 }
 
 fn parse_session(encoded: Option<String>) -> Result<Option<[u8; 32]>, String> {
@@ -105,9 +119,10 @@ fn make_sink(callback: EventCallback, user: *mut c_void) -> EventSink {
 pub fn start_from_json(config_json: &str, events: EventSink) -> Result<Engine, String> {
     let config: Config = serde_json::from_str(config_json).map_err(|e| format!("bad config: {e}"))?;
     let relay_session = parse_session(config.relay_session)?;
+    let device = device_selection(config.output_device, config.output_device_name);
     match config.mode.as_str() {
         "send" => {
-            let capture = platform::system_capture(config.exclude_pid)?;
+            let capture = platform::system_capture(config.exclude_pid, device)?;
             let sender = engine::start_sender(
                 SendConfig {
                     password: config.password,
@@ -123,7 +138,7 @@ pub fn start_from_json(config_json: &str, events: EventSink) -> Result<Engine, S
             Ok(Engine::Send(sender))
         }
         "recv" => {
-            let playout = platform::system_playout()?;
+            let playout = platform::system_playout(device)?;
             let receiver = engine::start_receiver(
                 RecvConfig {
                     password: config.password,
@@ -235,5 +250,8 @@ mod tests {
         assert_eq!(parse_session(Some(String::new())).unwrap(), None);
         let session = base64::engine::general_purpose::STANDARD.encode([9u8; 32]);
         assert_eq!(parse_session(Some(session)).unwrap(), Some([9u8; 32]));
+        assert_eq!(device_selection(Some("default".into()), None), DeviceSelection::Default);
+        assert_eq!(device_selection(Some("{0.0.0.00000000}.{x}".into()), Some("n".into())), DeviceSelection::Id("{0.0.0.00000000}.{x}".into()));
+        assert_eq!(device_selection(None, Some("USB Audio Device".into())), DeviceSelection::Name("USB Audio Device".into()));
     }
 }

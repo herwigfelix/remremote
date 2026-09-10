@@ -18,8 +18,11 @@ use std::time::Duration;
 
 use windows::core::{implement, w, Interface, Ref, Result as WinResult, HRESULT};
 use windows::Win32::Foundation::{CloseHandle, E_FAIL, HANDLE, WAIT_OBJECT_0};
+use windows::core::PCWSTR;
+use windows::Win32::Foundation::PROPERTYKEY;
 use windows::Win32::Media::Audio::{
-    eMultimedia, eRender, ActivateAudioInterfaceAsync, IActivateAudioInterfaceAsyncOperation,
+    eMultimedia, eRender, ActivateAudioInterfaceAsync, IActivateAudioInterfaceAsyncOperation, IMMDevice,
+    DEVICE_STATE_ACTIVE,
     IActivateAudioInterfaceCompletionHandler, IActivateAudioInterfaceCompletionHandler_Impl, IAudioCaptureClient,
     IAudioClient, IAudioRenderClient, IMMDeviceEnumerator, MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT,
     AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
@@ -27,13 +30,13 @@ use windows::Win32::Media::Audio::{
     WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
 };
 use windows::Win32::Media::Multimedia::{KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, WAVE_FORMAT_IEEE_FLOAT};
-use windows::Win32::System::Com::StructuredStorage::PROPVARIANT;
-use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_ALL, COINIT_MULTITHREADED};
+use windows::Win32::System::Com::StructuredStorage::{PropVariantClear, PropVariantToStringAlloc, PROPVARIANT};
+use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ};
 use windows::Win32::System::Threading::{
     AvRevertMmThreadCharacteristics, AvSetMmThreadCharacteristicsW, CreateEventW, WaitForSingleObject,
 };
 
-use super::{CaptureInfo, CaptureSource, PlayoutSink};
+use super::{CaptureInfo, CaptureSource, DeviceSelection, PlayoutInfo, PlayoutSink};
 use crate::jitter::PlayoutBuffer;
 
 const WAVE_FORMAT_EXTENSIBLE: u16 = 0xFFFE;
@@ -202,6 +205,115 @@ impl Converter {
     }
 }
 
+// ------------------------------------------------------------ output devices
+
+/// PKEY_Device_FriendlyName: {a45c254e-df1c-4efd-8020-67d146a850e0}, 14.
+const PKEY_DEVICE_FRIENDLY_NAME: PROPERTYKEY = PROPERTYKEY {
+    fmtid: windows::core::GUID::from_u128(0xa45c254e_df1c_4efd_8020_67d146a850e0),
+    pid: 14,
+};
+
+fn pwstr_to_string(pwstr: windows::core::PWSTR) -> String {
+    if pwstr.is_null() {
+        return String::new();
+    }
+    let text = unsafe { pwstr.to_string() }.unwrap_or_default();
+    unsafe { CoTaskMemFree(Some(pwstr.0 as *const c_void)) };
+    text
+}
+
+fn device_id(device: &IMMDevice) -> String {
+    unsafe { device.GetId() }.map(pwstr_to_string).unwrap_or_default()
+}
+
+fn device_name(device: &IMMDevice) -> String {
+    let Ok(store) = (unsafe { device.OpenPropertyStore(STGM_READ) }) else { return String::new() };
+    let Ok(mut value) = (unsafe { store.GetValue(&PKEY_DEVICE_FRIENDLY_NAME) }) else { return String::new() };
+    let name = unsafe { PropVariantToStringAlloc(&value) }.map(pwstr_to_string).unwrap_or_default();
+    unsafe {
+        let _ = PropVariantClear(&mut value);
+    }
+    name
+}
+
+fn enumerator() -> Result<IMMDeviceEnumerator, String> {
+    unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }.map_err(|e| format!("MMDeviceEnumerator: {e}"))
+}
+
+fn default_render_device(enumerator: &IMMDeviceEnumerator) -> Result<IMMDevice, String> {
+    unsafe { enumerator.GetDefaultAudioEndpoint(eRender, eMultimedia) }.map_err(|e| format!("no default output device: {e}"))
+}
+
+/// Every active render endpoint as (id, friendly name, is default).
+pub fn list_render_devices() -> Result<Vec<(String, String, bool)>, String> {
+    let _com = ComGuard::new();
+    let enumerator = enumerator()?;
+    let default_id = default_render_device(&enumerator).map(|d| device_id(&d)).unwrap_or_default();
+    let collection = unsafe { enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE) }.map_err(|e| format!("EnumAudioEndpoints: {e}"))?;
+    let count = unsafe { collection.GetCount() }.map_err(|e| format!("GetCount: {e}"))?;
+    let mut devices = Vec::new();
+    for index in 0..count {
+        let Ok(device) = (unsafe { collection.Item(index) }) else { continue };
+        let id = device_id(&device);
+        let is_default = id == default_id;
+        devices.push((id, device_name(&device), is_default));
+    }
+    Ok(devices)
+}
+
+/// The device a selection names, or the default (with a warning) when it cannot be found.
+/// Names match case-insensitively, exactly or as a prefix: NVDA versions before 2025.1 store
+/// the WinMM name, which is the friendly name cut to 31 characters.
+fn resolve_render_device(enumerator: &IMMDeviceEnumerator, selection: &DeviceSelection) -> Result<(IMMDevice, String, Option<(String, String)>), String> {
+    let fallback = |reason: String| -> Result<(IMMDevice, String, Option<(String, String)>), String> {
+        let device = default_render_device(enumerator)?;
+        let name = device_name(&device);
+        Ok((
+            device,
+            format!("{name} (default; {reason})"),
+            Some(("device-missing".to_string(), format!("{reason}; using the default output device {name}"))),
+        ))
+    };
+    match selection {
+        DeviceSelection::Default => {
+            let device = default_render_device(enumerator)?;
+            let name = device_name(&device);
+            Ok((device, format!("{name} (default)"), None))
+        }
+        DeviceSelection::Id(id) => {
+            let wide: Vec<u16> = id.encode_utf16().chain(std::iter::once(0)).collect();
+            match unsafe { enumerator.GetDevice(PCWSTR(wide.as_ptr())) } {
+                Ok(device) => {
+                    let name = device_name(&device);
+                    Ok((device, name, None))
+                }
+                Err(error) => fallback(format!("the configured output device {id} is unavailable ({error})")),
+            }
+        }
+        DeviceSelection::Name(wanted) => {
+            let wanted_lower = wanted.trim().to_lowercase();
+            let collection = unsafe { enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE) }.map_err(|e| format!("EnumAudioEndpoints: {e}"))?;
+            let count = unsafe { collection.GetCount() }.map_err(|e| format!("GetCount: {e}"))?;
+            let mut prefix_match: Option<(IMMDevice, String)> = None;
+            for index in 0..count {
+                let Ok(device) = (unsafe { collection.Item(index) }) else { continue };
+                let name = device_name(&device);
+                let lower = name.to_lowercase();
+                if lower == wanted_lower {
+                    return Ok((device, name, None));
+                }
+                if prefix_match.is_none() && !wanted_lower.is_empty() && lower.starts_with(&wanted_lower) {
+                    prefix_match = Some((device, name));
+                }
+            }
+            match prefix_match {
+                Some((device, name)) => Ok((device, name, None)),
+                None => fallback(format!("the configured output device \"{wanted}\" is unavailable")),
+            }
+        }
+    }
+}
+
 // ------------------------------------------------------ process-loopback activation
 
 #[repr(C)]
@@ -310,11 +422,14 @@ fn open_process_loopback(exclude_pid: u32) -> Result<CaptureStream, String> {
     Ok(CaptureStream { client, capture, event: Some(event), channels: 2, converter: None })
 }
 
-fn open_device_loopback() -> Result<CaptureStream, String> {
-    let enumerator: IMMDeviceEnumerator =
-        unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }.map_err(|e| format!("MMDeviceEnumerator: {e}"))?;
-    let device = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, eMultimedia) }
-        .map_err(|e| format!("no default output device: {e}"))?;
+fn open_device_loopback(selection: &DeviceSelection) -> Result<(CaptureStream, String, Option<(String, String)>), String> {
+    let enumerator = enumerator()?;
+    let (device, name, warning) = resolve_render_device(&enumerator, selection)?;
+    let stream = open_loopback_on(&device)?;
+    Ok((stream, name, warning))
+}
+
+fn open_loopback_on(device: &IMMDevice) -> Result<CaptureStream, String> {
     let client: IAudioClient = unsafe { device.Activate(CLSCTX_ALL, None) }.map_err(|e| format!("IMMDevice::Activate: {e}"))?;
     let wanted = stereo_float_48k();
     let converted = unsafe {
@@ -352,7 +467,7 @@ fn finish_device_loopback(client: IAudioClient, channels: usize, converter: Opti
     Ok(CaptureStream { client, capture, event: None, channels, converter })
 }
 
-fn open_capture(exclude_pid: u32) -> Result<(CaptureStream, CaptureInfo), String> {
+fn open_capture(exclude_pid: u32, selection: &DeviceSelection) -> Result<(CaptureStream, CaptureInfo), String> {
     let mut warning = None;
     if exclude_pid > 0 {
         match open_process_loopback(exclude_pid) {
@@ -374,8 +489,8 @@ fn open_capture(exclude_pid: u32) -> Result<(CaptureStream, CaptureInfo), String
             }
         }
     }
-    let stream = open_device_loopback()?;
-    Ok((stream, CaptureInfo { excluding_pid: None, warning, description: "default output device".to_string() }))
+    let (stream, name, device_warning) = open_device_loopback(selection)?;
+    Ok((stream, CaptureInfo { excluding_pid: None, warning: warning.or(device_warning), description: format!("output device {name}") }))
 }
 
 fn run_capture(stream: &mut CaptureStream, stop: &AtomicBool, sink: &mut dyn FnMut(&[f32])) -> Result<(), String> {
@@ -426,13 +541,14 @@ fn run_capture(stream: &mut CaptureStream, stop: &AtomicBool, sink: &mut dyn FnM
 
 pub struct WasapiCapture {
     exclude_pid: u32,
+    device: DeviceSelection,
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
 
 impl WasapiCapture {
-    pub fn new(exclude_pid: u32) -> Self {
-        WasapiCapture { exclude_pid, stop: Arc::new(AtomicBool::new(false)), thread: None }
+    pub fn new(exclude_pid: u32, device: DeviceSelection) -> Self {
+        WasapiCapture { exclude_pid, device, stop: Arc::new(AtomicBool::new(false)), thread: None }
     }
 }
 
@@ -440,12 +556,13 @@ impl CaptureSource for WasapiCapture {
     fn start(&mut self, mut sink: Box<dyn FnMut(&[f32]) + Send>, mut on_fatal: Box<dyn FnMut(String) + Send>) -> Result<CaptureInfo, String> {
         let stop = self.stop.clone();
         let exclude_pid = self.exclude_pid;
+        let selection = self.device.clone();
         let (ready_tx, ready_rx) = mpsc::channel::<Result<CaptureInfo, String>>();
         let thread = thread::Builder::new()
             .name("remremote-audio-capture".into())
             .spawn(move || {
                 let _com = ComGuard::new();
-                let (mut stream, info) = match open_capture(exclude_pid) {
+                let (mut stream, info) = match open_capture(exclude_pid, &selection) {
                     Ok(opened) => opened,
                     Err(error) => {
                         let _ = ready_tx.send(Err(error));
@@ -493,26 +610,22 @@ impl CaptureSource for WasapiCapture {
 // ------------------------------------------------------------------- playout
 
 pub struct WasapiPlayout {
+    device: DeviceSelection,
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
 
 impl WasapiPlayout {
-    pub fn new() -> Self {
-        WasapiPlayout { stop: Arc::new(AtomicBool::new(false)), thread: None }
-    }
-}
-
-impl Default for WasapiPlayout {
-    fn default() -> Self {
-        Self::new()
+    pub fn new(device: DeviceSelection) -> Self {
+        WasapiPlayout { device, stop: Arc::new(AtomicBool::new(false)), thread: None }
     }
 }
 
 impl PlayoutSink for WasapiPlayout {
-    fn start(&mut self, buffer: Arc<Mutex<PlayoutBuffer>>, mut on_fatal: Box<dyn FnMut(String) + Send>) -> Result<(), String> {
+    fn start(&mut self, buffer: Arc<Mutex<PlayoutBuffer>>, mut on_fatal: Box<dyn FnMut(String) + Send>) -> Result<PlayoutInfo, String> {
         let stop = self.stop.clone();
-        let (ready_tx, ready_rx) = mpsc::channel::<Result<(), String>>();
+        let selection = self.device.clone();
+        let (ready_tx, ready_rx) = mpsc::channel::<Result<PlayoutInfo, String>>();
         let thread = thread::Builder::new()
             .name("remremote-audio-playout".into())
             .spawn(move || {
@@ -521,7 +634,7 @@ impl PlayoutSink for WasapiPlayout {
                 // reach start(), later ones on_fatal.
                 let ready = Mutex::new(Some(ready_tx));
                 let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    run_playout_reporting(&buffer, &stop, &ready)
+                    run_playout_reporting(&buffer, &stop, &selection, &ready)
                 }));
                 match outcome {
                     Ok(Ok(())) => {}
@@ -544,7 +657,7 @@ impl PlayoutSink for WasapiPlayout {
             .map_err(|e| format!("could not start the playout thread: {e}"))?;
         self.thread = Some(thread);
         match ready_rx.recv_timeout(Duration::from_secs(10)) {
-            Ok(Ok(())) => Ok(()),
+            Ok(Ok(info)) => Ok(info),
             Ok(Err(error)) => {
                 self.stop();
                 Err(error)
@@ -568,12 +681,11 @@ impl PlayoutSink for WasapiPlayout {
 fn run_playout_reporting(
     buffer: &Mutex<PlayoutBuffer>,
     stop: &AtomicBool,
-    ready: &Mutex<Option<mpsc::Sender<Result<(), String>>>>,
+    selection: &DeviceSelection,
+    ready: &Mutex<Option<mpsc::Sender<Result<PlayoutInfo, String>>>>,
 ) -> Result<(), String> {
-    let enumerator: IMMDeviceEnumerator =
-        unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }.map_err(|e| format!("MMDeviceEnumerator: {e}"))?;
-    let device = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, eMultimedia) }
-        .map_err(|e| format!("no default output device: {e}"))?;
+    let enumerator = enumerator()?;
+    let (device, name, warning) = resolve_render_device(&enumerator, selection)?;
     let client: IAudioClient = unsafe { device.Activate(CLSCTX_ALL, None) }.map_err(|e| format!("IMMDevice::Activate: {e}"))?;
     let format = stereo_float_48k();
     unsafe {
@@ -600,7 +712,7 @@ fn run_playout_reporting(
         client.Start().map_err(|e| format!("IAudioClient::Start: {e}"))?;
     }
     if let Some(tx) = ready.lock().unwrap().take() {
-        let _ = tx.send(Ok(()));
+        let _ = tx.send(Ok(PlayoutInfo { warning, description: format!("output device {name}") }));
     }
     let _boost = MmcssGuard::new();
     while !stop.load(Ordering::Relaxed) {

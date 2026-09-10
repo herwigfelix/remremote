@@ -5,6 +5,8 @@
 //!                            [--exclude-pid PID] [--relay-session B64] [--tone HZ] [--seconds N]
 //!   remremote-audio-cli recv --password PW (--bind PORT | --host H --port P)
 //!                            [--max-latency MS] [--relay-session B64] [--null] [--dump FILE] [--seconds N]
+//!   both: [--output-device ENDPOINT_ID | --output-device-name NAME]   (default: system default)
+//!   remremote-audio-cli devices          lists the output devices (Windows)
 //!   remremote-audio-cli derive --password PW
 //!   remremote-audio-cli version
 
@@ -18,7 +20,7 @@ use base64::Engine as _;
 use remremote_audio::engine::{start_receiver, start_sender, EventSink, RecvConfig, SendConfig};
 use remremote_audio::platform::null::NullPlayout;
 use remremote_audio::platform::tone::ToneSource;
-use remremote_audio::platform::{system_capture, system_playout, CaptureSource, PlayoutSink};
+use remremote_audio::platform::{list_output_devices, system_capture, system_playout, CaptureSource, DeviceSelection, PlayoutSink};
 use remremote_audio::{crypto, VERSION};
 
 fn parse_args(args: &[String]) -> (HashMap<String, String>, Vec<String>) {
@@ -54,6 +56,16 @@ fn session(options: &HashMap<String, String>) -> Result<Option<[u8; 32]>, String
     }
 }
 
+fn device(options: &HashMap<String, String>) -> DeviceSelection {
+    if let Some(id) = options.get("output-device") {
+        DeviceSelection::Id(id.clone())
+    } else if let Some(name) = options.get("output-device-name") {
+        DeviceSelection::Name(name.clone())
+    } else {
+        DeviceSelection::Default
+    }
+}
+
 fn events() -> EventSink {
     let out = Mutex::new(std::io::stdout());
     Arc::new(move |value| {
@@ -84,6 +96,12 @@ fn main() {
             println!("{VERSION}");
             Ok(())
         }
+        "devices" => (|| {
+            for (id, name, is_default) in list_output_devices()? {
+                println!("{}{}\t{}", if is_default { "* " } else { "  " }, name, id);
+            }
+            Ok(())
+        })(),
         "derive" => {
             let hex = |bytes: &[u8]| bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
             println!("key         {}", hex(&crypto::derive_key(&password)));
@@ -93,7 +111,7 @@ fn main() {
         "send" => (|| {
             let capture: Box<dyn CaptureSource> = match options.get("tone") {
                 Some(hz) => Box::new(ToneSource::new(hz.parse().map_err(|_| "bad --tone")?)),
-                None => system_capture(options.get("exclude-pid").and_then(|p| p.parse().ok()).unwrap_or(0))?,
+                None => system_capture(options.get("exclude-pid").and_then(|p| p.parse().ok()).unwrap_or(0), device(&options))?,
             };
             let mut sender = start_sender(
                 SendConfig {
@@ -115,7 +133,7 @@ fn main() {
             let playout: Box<dyn PlayoutSink> = if options.contains_key("null") || options.contains_key("dump") {
                 Box::new(NullPlayout::new(options.get("dump").map(PathBuf::from)))
             } else {
-                system_playout()?
+                system_playout(device(&options))?
             };
             let mut receiver = start_receiver(
                 RecvConfig {
@@ -133,7 +151,7 @@ fn main() {
             receiver.stop();
             Ok(())
         })(),
-        _ => Err("usage: remremote-audio-cli (send|recv|derive|version) [options]".into()),
+        _ => Err("usage: remremote-audio-cli (send|recv|devices|derive|version) [options]".into()),
     };
     if let Err(message) = result {
         eprintln!("error: {message}");

@@ -402,7 +402,7 @@ pub fn start_receiver(config: RecvConfig, mut playout: Box<dyn PlayoutSink>, eve
         *for_fatal.playout_error.lock().unwrap() = Some(message.clone());
         emit(&for_fatal.events, json!({"event": "error", "message": message, "fatal": true}));
     });
-    playout.start(buffer, on_fatal)?;
+    let playout_info = playout.start(buffer, on_fatal)?;
 
     // Inbound: pongs confirm the path; Format opens a stream; Audio is decoded into the buffer.
     let net_shared = shared.clone();
@@ -609,6 +609,9 @@ pub fn start_receiver(config: RecvConfig, mut playout: Box<dyn PlayoutSink>, eve
         })
         .map_err(|e| format!("could not start the timer thread: {e}"))?;
 
+    if let Some((code, message)) = &playout_info.warning {
+        emit(&events, json!({"event": "warning", "code": code, "message": message}));
+    }
     emit(
         &events,
         json!({
@@ -617,6 +620,7 @@ pub fn start_receiver(config: RecvConfig, mut playout: Box<dyn PlayoutSink>, eve
             "bound": if host_mode { Some(config.bind_port) } else { None },
             "target": target.map(|t| t.to_string()),
             "targetMs": target_ms,
+            "playout": playout_info.description,
         }),
     );
     Ok(Receiver { shared, threads: vec![net_thread, timer_thread], playout: Some(playout) })
