@@ -6,6 +6,7 @@
 //!   remremote-audio-cli recv --password PW (--bind PORT | --host H --port P)
 //!                            [--max-latency MS] [--relay-session B64] [--null] [--dump FILE] [--seconds N]
 //!   both: [--output-device ENDPOINT_ID | --output-device-name NAME]   (default: system default)
+//!         [--switch-after SECS --switch-to ENDPOINT_ID|--switch-to-name NAME|--switch-to-default]
 //!   remremote-audio-cli devices          lists the output devices (Windows)
 //!   remremote-audio-cli derive --password PW
 //!   remremote-audio-cli version
@@ -75,12 +76,30 @@ fn events() -> EventSink {
     })
 }
 
-fn run_for(options: &HashMap<String, String>) {
-    match options.get("seconds").and_then(|s| s.parse::<u64>().ok()) {
-        Some(seconds) => std::thread::sleep(Duration::from_secs(seconds)),
-        None => loop {
-            std::thread::sleep(Duration::from_secs(3600));
-        },
+/// Runs for --seconds (or forever), performing a device switch on the way when asked.
+fn run_for(options: &HashMap<String, String>, mut switch: impl FnMut(DeviceSelection)) {
+    let total = options.get("seconds").and_then(|s| s.parse::<u64>().ok());
+    let mut elapsed = 0u64;
+    let mut switch_at = options.get("switch-after").and_then(|s| s.parse::<u64>().ok());
+    loop {
+        if let Some(total) = total {
+            if elapsed >= total {
+                return;
+            }
+        }
+        std::thread::sleep(Duration::from_secs(1));
+        elapsed += 1;
+        if switch_at == Some(elapsed) {
+            switch_at = None;
+            let target = if let Some(id) = options.get("switch-to") {
+                DeviceSelection::Id(id.clone())
+            } else if let Some(name) = options.get("switch-to-name") {
+                DeviceSelection::Name(name.clone())
+            } else {
+                DeviceSelection::Default
+            };
+            switch(target);
+        }
     }
 }
 
@@ -125,7 +144,7 @@ fn main() {
                 capture,
                 events(),
             )?;
-            run_for(&options);
+            run_for(&options, |device| sender.set_device(device));
             sender.stop();
             Ok(())
         })(),
@@ -147,7 +166,7 @@ fn main() {
                 playout,
                 events(),
             )?;
-            run_for(&options);
+            run_for(&options, |device| receiver.set_device(device));
             receiver.stop();
             Ok(())
         })(),

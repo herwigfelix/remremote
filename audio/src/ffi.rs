@@ -5,6 +5,7 @@
 //! void* remremote_audio_start(const char* config_json,
 //!                             void (*callback)(void* user, const char* event_json),
 //!                             void* user);            // NULL on failure, see last_error
+//! int   remremote_audio_set_output_device(void* handle, const char* device_json); // 1 = ok
 //! void  remremote_audio_stop(void* handle);            // joins every thread; no callback after
 //! size_t remremote_audio_last_error(char* buf, size_t capacity);
 //! ```
@@ -157,7 +158,23 @@ pub fn start_from_json(config_json: &str, events: EventSink) -> Result<Engine, S
     }
 }
 
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct DeviceConfig {
+    #[serde(default)]
+    output_device: Option<String>,
+    #[serde(default)]
+    output_device_name: Option<String>,
+}
+
 impl Engine {
+    pub fn set_device(&mut self, device: DeviceSelection) {
+        match self {
+            Engine::Send(sender) => sender.set_device(device),
+            Engine::Recv(receiver) => receiver.set_device(device),
+        }
+    }
+
     pub fn stop(&mut self) {
         match self {
             Engine::Send(sender) => sender.stop(),
@@ -193,6 +210,36 @@ pub unsafe extern "C" fn remremote_audio_start(config_json: *const c_char, callb
         Err(_) => {
             set_last_error("the audio engine panicked while starting");
             std::ptr::null_mut()
+        }
+    }
+}
+
+/// Switches the output device of a running pipeline: `{"outputDevice": "<endpoint id>"}`,
+/// `{"outputDeviceName": "<name>"}` or `{}` for the system default. Returns 1 on success.
+///
+/// # Safety
+/// `handle` must come from `remremote_audio_start`; `device_json` must be NUL-terminated.
+#[no_mangle]
+pub unsafe extern "C" fn remremote_audio_set_output_device(handle: *mut Handle, device_json: *const c_char) -> i32 {
+    if handle.is_null() || device_json.is_null() {
+        set_last_error("handle or device is NULL");
+        return 0;
+    }
+    let result = catch_unwind(AssertUnwindSafe(|| -> Result<(), String> {
+        let text = CStr::from_ptr(device_json).to_str().map_err(|e| format!("device is not UTF-8: {e}"))?;
+        let config: DeviceConfig = serde_json::from_str(text).map_err(|e| format!("bad device config: {e}"))?;
+        (*handle).engine.set_device(device_selection(config.output_device, config.output_device_name));
+        Ok(())
+    }));
+    match result {
+        Ok(Ok(())) => 1,
+        Ok(Err(message)) => {
+            set_last_error(message);
+            0
+        }
+        Err(_) => {
+            set_last_error("the audio engine panicked while switching devices");
+            0
         }
     }
 }
@@ -246,6 +293,7 @@ mod tests {
         let short = unsafe { remremote_audio_last_error(std::ptr::null_mut(), 0) };
         assert_eq!(short, len);
         unsafe { remremote_audio_stop(std::ptr::null_mut()) };
+        assert_eq!(unsafe { remremote_audio_set_output_device(std::ptr::null_mut(), std::ptr::null()) }, 0);
         assert!(parse_session(Some("AAAA".into())).is_err());
         assert_eq!(parse_session(Some(String::new())).unwrap(), None);
         let session = base64::engine::general_purpose::STANDARD.encode([9u8; 32]);

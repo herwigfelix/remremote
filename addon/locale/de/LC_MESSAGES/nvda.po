@@ -864,3 +864,21 @@ msgstr "macOS unterstützt dies nicht."
 #. Translators: label of a checkbox in the add-on options to relay the Insert key as VoiceOver keys when controlling a Mac.
 msgid "When controlling a Mac, send the NVDA key (Insert) as the VoiceOver keys (control+option)"
 msgstr "Beim Steuern eines Macs die NVDA-Taste (Einfügen) als VoiceOver-Tasten (Steuerung+Wahl) senden"
+
+msgid "Restarting remote audio..."
+msgstr "Remote-Audio wird neu gestartet..."
+
+msgid "Warning: the output device selected in NVDA's audio settings is unavailable; remote audio uses the default output device."
+msgstr "Warnung: Das in den NVDA-Audioeinstellungen gewählte Ausgabegerät ist nicht verfügbar; Remote-Audio verwendet das Standard-Ausgabegerät."
+
+msgid "Could not start the audio receiver: {error}"
+msgstr "Der Audioempfänger konnte nicht gestartet werden: {error}"
+
+msgid "Audio streaming stopped unexpectedly: {error}"
+msgstr "Die Audioübertragung wurde unerwartet beendet: {error}"
+
+msgid "Could not add the firewall exceptions. You can add NVDA to the Windows Firewall manually."
+msgstr "Die Firewall-Ausnahmen konnten nicht hinzugefügt werden. Sie können NVDA manuell zur Windows-Firewall hinzufügen."
+
+msgid "The remote computer cannot stream audio: it runs an older remremote whose audio helper needs the .NET 10 Desktop Runtime, which is missing there."
+msgstr "Der entfernte Computer kann kein Audio übertragen: Dort läuft ein älteres remremote, dessen Audio-Hilfsprogramm die .NET 10 Desktop Runtime benötigt, die dort fehlt."

@@ -28,7 +28,7 @@ use crate::jitter::PlayoutBuffer;
 use crate::net;
 use crate::opus;
 use crate::packet::{AudioFormat, Header, PacketType, CODEC_OPUS, HEADER_SIZE, HELLO_STREAM_ID};
-use crate::platform::{CaptureSource, PlayoutSink};
+use crate::platform::{CaptureSource, DeviceSelection, Notice, NoticeSink, PlayoutSink};
 
 pub type EventSink = Arc<dyn Fn(Value) + Send + Sync>;
 
@@ -186,12 +186,16 @@ pub fn start_sender(config: SendConfig, mut capture: Box<dyn CaptureSource>, eve
         }
         accumulator.drain(..offset);
     });
-    let for_fatal = shared.clone();
-    let on_fatal: Box<dyn FnMut(String) + Send> = Box::new(move |message: String| {
-        *for_fatal.capture_error.lock().unwrap() = Some(message.clone());
-        emit(&for_fatal.events, json!({"event": "error", "message": message, "fatal": true}));
+    let for_notice = shared.clone();
+    let notices: NoticeSink = Box::new(move |notice: Notice| match notice {
+        Notice::Fatal(message) => {
+            *for_notice.capture_error.lock().unwrap() = Some(message.clone());
+            emit(&for_notice.events, json!({"event": "error", "message": message, "fatal": true}));
+        }
+        Notice::Warning(code, message) => emit(&for_notice.events, json!({"event": "warning", "code": code, "message": message})),
+        Notice::Diag(message) => emit(&for_notice.events, json!({"event": "diag", "message": message})),
     });
-    let info = capture.start(sink, on_fatal)?;
+    let info = capture.start(sink, notices)?;
 
     // Inbound: the receiver's hellos (learn/confirm the return path, answer with a pong).
     let net_shared = shared.clone();
@@ -297,6 +301,13 @@ pub fn start_sender(config: SendConfig, mut capture: Box<dyn CaptureSource>, eve
 }
 
 impl Sender {
+    /// Switch a whole-device capture to another device while streaming.
+    pub fn set_device(&mut self, device: DeviceSelection) {
+        if let Some(capture) = self.capture.as_mut() {
+            capture.set_device(device);
+        }
+    }
+
     /// Stops capture and every thread. No event is delivered after this returns.
     pub fn stop(&mut self) {
         self.shared.stop.store(true, Ordering::Relaxed);
@@ -397,12 +408,16 @@ pub fn start_receiver(config: RecvConfig, mut playout: Box<dyn PlayoutSink>, eve
         events: events.clone(),
     });
 
-    let for_fatal = shared.clone();
-    let on_fatal: Box<dyn FnMut(String) + Send> = Box::new(move |message: String| {
-        *for_fatal.playout_error.lock().unwrap() = Some(message.clone());
-        emit(&for_fatal.events, json!({"event": "error", "message": message, "fatal": true}));
+    let for_notice = shared.clone();
+    let notices: NoticeSink = Box::new(move |notice: Notice| match notice {
+        Notice::Fatal(message) => {
+            *for_notice.playout_error.lock().unwrap() = Some(message.clone());
+            emit(&for_notice.events, json!({"event": "error", "message": message, "fatal": true}));
+        }
+        Notice::Warning(code, message) => emit(&for_notice.events, json!({"event": "warning", "code": code, "message": message})),
+        Notice::Diag(message) => emit(&for_notice.events, json!({"event": "diag", "message": message})),
     });
-    let playout_info = playout.start(buffer, on_fatal)?;
+    let playout_info = playout.start(buffer, notices)?;
 
     // Inbound: pongs confirm the path; Format opens a stream; Audio is decoded into the buffer.
     let net_shared = shared.clone();
@@ -627,6 +642,13 @@ pub fn start_receiver(config: RecvConfig, mut playout: Box<dyn PlayoutSink>, eve
 }
 
 impl Receiver {
+    /// Switch playback to another output device while streaming.
+    pub fn set_device(&mut self, device: DeviceSelection) {
+        if let Some(playout) = self.playout.as_mut() {
+            playout.set_device(device);
+        }
+    }
+
     /// Stops playout and every thread. No event is delivered after this returns.
     pub fn stop(&mut self) {
         self.shared.stop.store(true, Ordering::Relaxed);

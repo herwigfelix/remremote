@@ -137,6 +137,8 @@ class AudioEngine:
 			lib.remremote_audio_start.restype = ctypes.c_void_p
 			lib.remremote_audio_stop.argtypes = [ctypes.c_void_p]
 			lib.remremote_audio_stop.restype = None
+			lib.remremote_audio_set_output_device.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+			lib.remremote_audio_set_output_device.restype = ctypes.c_int
 			lib.remremote_audio_last_error.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
 			lib.remremote_audio_last_error.restype = ctypes.c_size_t
 			logger.info("audio engine %s loaded from %s", lib.remremote_audio_version().decode("utf-8", "replace"), path)
@@ -186,6 +188,16 @@ class AudioEngine:
 			raise OSError(buf.value.decode("utf-8", "replace") or "the audio engine failed to start")
 		self.handle = handle
 
+	def set_output_device(self, **device):
+		"""Switch the running pipeline's output device (``outputDevice`` id,
+		``outputDeviceName``, or nothing for the system default)."""
+		if not self.handle:
+			return
+		if not self.library().remremote_audio_set_output_device(self.handle, json.dumps(device).encode("utf-8")):
+			buf = ctypes.create_string_buffer(2048)
+			self.library().remremote_audio_last_error(buf, len(buf))
+			logger.warning("audio engine refused the device switch: %s", buf.value.decode("utf-8", "replace"))
+
 	def stop(self):
 		"""Stops the pipeline and joins its threads. Safe to call twice."""
 		handle, self.handle = self.handle, None
@@ -203,6 +215,9 @@ class AudioManager:
 		#: The engine pipeline of the current stream (sender on the slave, receiver on the master).
 		self.engine = None
 		self._status_events = 0
+		#: The output device the running pipeline was given, to notice a change in NVDA's
+		#: audio settings while streaming (None = the pipeline does not follow the device).
+		self._engine_device = None
 		#: True once audio is (being) streamed in either direction.
 		self.active = False
 		#: Master only: waiting for the slave's audio_started/audio_error reply.
@@ -262,6 +277,7 @@ class AudioManager:
 		engine = AudioEngine(self._on_engine_event)
 		self.engine = engine
 		self._status_events = 0
+		self._engine_device = None
 		return engine
 
 	def _stop_engine(self):
@@ -437,6 +453,19 @@ class AudioManager:
 		# replacement binds the same UDP port.
 		self._restart_timer = wx.CallLater(RESTART_DELAY_MS, self._restart_from_master)
 
+	def restart_from_master(self):
+		"""Tear the stream down and request it afresh a moment later."""
+		self._cancel_pending_timer()
+		# Translators: reported when the remote audio stream is being restarted.
+		ui.message(_("Restarting remote audio..."))
+		if self.active or self.pending:
+			self._stop_from_master(announce=False)
+			# Let the stop reach the controlled computer and its sender release the UDP port
+			# before the replacement binds it.
+			self._restart_timer = wx.CallLater(RESTART_DELAY_MS, self._restart_from_master)
+		else:
+			self._start_from_master(announce=False)
+
 	def _restart_from_master(self):
 		self._restart_timer = None
 		transport = self.plugin.master_transport
@@ -488,11 +517,10 @@ class AudioManager:
 			ui.message(_("Not connected."))
 			return
 		if self.forced:
-			# Controlling a Mac: audio cannot be turned off.
-			if not (self.active or self.pending):
-				self._start_from_master(announce=False)
-			# Translators: reported when trying to turn off audio while controlling a Mac.
-			ui.message(_("macOS does not support this."))
+			# Controlling a Mac: audio is the only way to hear it, so the switch cannot turn
+			# it off. Instead it rebuilds the stream, which is what a user reaching for it
+			# wants when the audio has gone quiet after a hiccup.
+			self.restart_from_master()
 			return
 		if self.active or self.pending:
 			self._stop_from_master()
@@ -557,6 +585,7 @@ class AudioManager:
 		device = nvda_output_device()
 		try:
 			engine = self._new_engine()
+			self._engine_device = device
 			if mode == "connect":
 				# We host the connection: bind the UDP twin of our control-server port and
 				# let the slave's audio stream find us there.
@@ -721,6 +750,7 @@ class AudioManager:
 		password = self._password(transport)
 		try:
 			engine = self._new_engine()
+			self._engine_device = exclude if self._pending_remote_tts else None
 			if master_hosting:
 				# The master owns the well-known UDP port on its end; stream straight at it.
 				target_port = int(port) if port else transport.address[1]
@@ -814,6 +844,21 @@ class AudioManager:
 				logger.info("audio engine status: %s", event)
 			else:
 				logger.debug("audio engine status: %s", event)
+			wx.CallAfter(self._follow_output_device)
+
+	def _follow_output_device(self):
+		"""If the output device in NVDA's audio settings changed while streaming, move the
+		running pipeline over, like NVDA's own audio moves. Checked on the engine's status
+		beat (every two seconds), which is plenty for a settings change."""
+		engine = self.engine
+		if engine is None or self._engine_device is None or not engine.running:
+			return
+		device = nvda_output_device()
+		if device == self._engine_device:
+			return
+		self._engine_device = device
+		logger.info("NVDA's output device changed; moving the audio stream to %s", device or "the default device")
+		engine.set_output_device(**device)
 
 	def _on_engine_started(self, event):
 		plugin = self.plugin
@@ -872,6 +917,14 @@ class AudioManager:
 				plugin.slave_transport.send(type="audio_stopped")
 			except (TypeError, OSError):
 				logger.exception("could not send audio_stopped")
+		master = plugin.master_transport
+		if was_active and master is not None and getattr(master, "connected", False):
+			# Our playback died: tell the controlled computer to stop, or it keeps streaming
+			# into the void until someone toggles again.
+			try:
+				master.send(type="audio_stop")
+			except (TypeError, OSError):
+				logger.exception("could not send audio_stop")
 		if was_active:
 			# Translators: reported when the audio pipeline stopped while streaming; {error} is the engine's message.
 			ui.message(_("Audio streaming stopped unexpectedly: {error}").format(error=message))

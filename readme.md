@@ -18,7 +18,8 @@ originals are the work of other people; see [Credits and licence](#credits-and-l
   controlled computer's system sound is streamed as Opus over UDP, encrypted with
   AES-256-GCM. NVDA's own process tree is excluded from the capture, so its speech is not
   heard twice. The remote audio plays on the output device selected in NVDA's audio
-  settings.
+  settings and follows it when it changes, when the Windows default device changes, or
+  when the device disappears and comes back.
 * **Use the remote computer's speech synthesizer** (control+shift+NVDA+s, or an option in
   the add-on settings). While audio is streaming, the controlled machine stops forwarding
   its speech as text and you hear its own voice instead — useful when the two computers

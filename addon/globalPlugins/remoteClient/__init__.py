@@ -681,6 +681,21 @@ class GlobalPlugin(_GlobalPlugin):
 	def on_disconnected_as_master(self):
 		# Translators: Presented when connection to a remote computer was interupted.
 		ui.message(_("Connection interrupted"))
+		# Whatever audio was running is gone with the connection. Clear it now, so that when
+		# the connection comes back the OS handshake re-decides and a controlled Mac gets its
+		# audio requested again instead of being blocked by the stale "active" state.
+		self.peer_os = None
+		self.audio.reset_master_audio()
+
+	def on_master_client_joined(self, client=None, **kwargs):
+		"""A machine joined our session. If it is a controlled computer, any stream we had
+		belonged to a previous connection of it (or to another machine) and is stale: reset,
+		so its OS announcement — which follows right behind — starts afresh. Also announce
+		our own OS to it."""
+		if isinstance(client, dict) and client.get("connection_type") == "slave":
+			self.peer_os = None
+			self.audio.reset_master_audio()
+		self.send_os()
 
 	def send_os(self, *args, **kwargs):
 		"""Announce this machine's operating system to the session, so a controlling Mac
@@ -711,7 +726,7 @@ class GlobalPlugin(_GlobalPlugin):
 		self.audio.register_master(transport)
 		self.clipboard_sync.register(transport)
 		transport.callback_manager.register_callback('msg_remremote_os', self.on_peer_os)
-		transport.callback_manager.register_callback('msg_client_joined', self.send_os)
+		transport.callback_manager.register_callback('msg_client_joined', self.on_master_client_joined)
 		transport.callback_manager.register_callback('msg_client_left', self.on_master_client_left)
 		self.master_transport = transport
 		self.master_transport.reconnector_thread.start()

@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use super::{PlayoutInfo, PlayoutSink};
+use super::{DeviceSelection, Notice, NoticeSink, PlayoutInfo, PlayoutSink};
 use crate::jitter::PlayoutBuffer;
 
 pub struct NullPlayout {
@@ -25,7 +25,9 @@ impl NullPlayout {
 }
 
 impl PlayoutSink for NullPlayout {
-    fn start(&mut self, buffer: Arc<Mutex<PlayoutBuffer>>, mut on_fatal: Box<dyn FnMut(String) + Send>) -> Result<PlayoutInfo, String> {
+    fn set_device(&mut self, _device: DeviceSelection) {}
+
+    fn start(&mut self, buffer: Arc<Mutex<PlayoutBuffer>>, mut notices: NoticeSink) -> Result<PlayoutInfo, String> {
         let stop = self.stop.clone();
         let description = match &self.dump {
             Some(path) => format!("raw dump to {}", path.display()),
@@ -47,7 +49,7 @@ impl PlayoutSink for NullPlayout {
                         if let Some(writer) = writer.as_mut() {
                             let bytes: Vec<u8> = frame.iter().flat_map(|s| s.to_le_bytes()).collect();
                             if let Err(e) = writer.write_all(&bytes) {
-                                on_fatal(format!("dump failed: {e}"));
+                                notices(Notice::Fatal(format!("dump failed: {e}")));
                                 return;
                             }
                         }

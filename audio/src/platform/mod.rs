@@ -22,6 +22,19 @@ pub enum DeviceSelection {
     Name(String),
 }
 
+/// What a running capture or playout wants the engine to know after `start` returned.
+#[derive(Clone, Debug)]
+pub enum Notice {
+    /// The pipeline died for good.
+    Fatal(String),
+    /// (code, message) worth telling the user, e.g. that the chosen device went missing.
+    Warning(String, String),
+    /// Diagnostic detail for the log.
+    Diag(String),
+}
+
+pub type NoticeSink = Box<dyn FnMut(Notice) + Send>;
+
 pub struct CaptureInfo {
     /// The process tree actually excluded from the capture, if any.
     pub excluding_pid: Option<u32>,
@@ -31,13 +44,11 @@ pub struct CaptureInfo {
 }
 
 /// Delivers 48 kHz stereo interleaved float samples to `sink` from its own thread until
-/// stopped; `on_fatal` reports a capture that died after `start` returned.
+/// stopped; `notices` reports what happens after `start` returned.
 pub trait CaptureSource: Send {
-    fn start(
-        &mut self,
-        sink: Box<dyn FnMut(&[f32]) + Send>,
-        on_fatal: Box<dyn FnMut(String) + Send>,
-    ) -> Result<CaptureInfo, String>;
+    fn start(&mut self, sink: Box<dyn FnMut(&[f32]) + Send>, notices: NoticeSink) -> Result<CaptureInfo, String>;
+    /// Switch a whole-device capture to another device while running (no-op otherwise).
+    fn set_device(&mut self, device: DeviceSelection);
     fn stop(&mut self);
 }
 
@@ -49,11 +60,9 @@ pub struct PlayoutInfo {
 
 /// Drains the playout buffer to the system output from its own thread until stopped.
 pub trait PlayoutSink: Send {
-    fn start(
-        &mut self,
-        buffer: Arc<Mutex<PlayoutBuffer>>,
-        on_fatal: Box<dyn FnMut(String) + Send>,
-    ) -> Result<PlayoutInfo, String>;
+    fn start(&mut self, buffer: Arc<Mutex<PlayoutBuffer>>, notices: NoticeSink) -> Result<PlayoutInfo, String>;
+    /// Switch to another output device while running.
+    fn set_device(&mut self, device: DeviceSelection);
     fn stop(&mut self);
 }
 

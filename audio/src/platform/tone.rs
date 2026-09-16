@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use super::{CaptureInfo, CaptureSource};
+use super::{CaptureInfo, CaptureSource, DeviceSelection, NoticeSink};
 
 pub struct ToneSource {
     frequency: f32,
@@ -20,7 +20,9 @@ impl ToneSource {
 }
 
 impl CaptureSource for ToneSource {
-    fn start(&mut self, mut sink: Box<dyn FnMut(&[f32]) + Send>, _on_fatal: Box<dyn FnMut(String) + Send>) -> Result<CaptureInfo, String> {
+    fn set_device(&mut self, _device: DeviceSelection) {}
+
+    fn start(&mut self, mut sink: Box<dyn FnMut(&[f32]) + Send>, _notices: NoticeSink) -> Result<CaptureInfo, String> {
         let stop = self.stop.clone();
         let frequency = self.frequency;
         self.thread = Some(

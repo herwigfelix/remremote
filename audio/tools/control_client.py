@@ -136,6 +136,8 @@ def main():
     parser.add_argument("--remote-tts", action="store_true", help="master: ask for the slave's own synthesizer in the stream")
     parser.add_argument("--seconds", type=int, default=30, help="how long to keep the session up")
     parser.add_argument("--keys", default="", help="master: comma-separated vk codes to press once audio runs (e.g. 0x2D+0x54 for NVDA+T)")
+    parser.add_argument("--os", default="windows", help="what to claim in remremote_os (macos makes a Windows master force audio)")
+    parser.add_argument("--reconnect-after", type=int, default=0, help="slave: after N seconds open a NEW connection without closing the old one (a Mac whose old link went stale)")
     args = parser.parse_args()
 
     peer = Peer(args.host, args.port, args.channel, args.encryption_key, args.role)
@@ -143,7 +145,7 @@ def main():
     if peer.wait_for("channel_joined", 15) is None:
         print("no channel_joined", file=sys.stderr)
         sys.exit(2)
-    peer.send("remremote_os", os="windows")
+    peer.send("remremote_os", os=args.os)
 
     if args.role == "master":
         if not [e for e in peer.events if e.get("type") == "channel_joined" and e.get("clients")]:
@@ -151,7 +153,7 @@ def main():
             if peer.wait_for("client_joined", 60) is None:
                 print("no client_joined", file=sys.stderr)
                 sys.exit(2)
-        peer.send("remremote_os", os="windows")
+        peer.send("remremote_os", os=args.os)
         peer.send("remote_tts", state=args.remote_tts)
         request = {"master_hosting": args.master_hosting, "port": args.hosting_port or None, "remote_tts": args.remote_tts}
         if args.audio_session:
@@ -176,21 +178,35 @@ def main():
     else:
         session = args.audio_session
         deadline = time.time() + args.seconds
-        # The controlling computer only asks for audio on a gesture there or when we offer
-        # ours; offer it, which makes it run the normal audio_start handshake.
-        time.sleep(2)
-        peer.send("audio_offer")
+        reconnect_at = time.time() + args.reconnect_after if args.reconnect_after else None
+        # A Windows master asks for audio by itself when we claim to be a Mac; otherwise
+        # offer ours, which makes it run the normal audio_start handshake.
+        if args.os != "macos":
+            time.sleep(2)
+            peer.send("audio_offer")
         while time.time() < deadline:
-            event = peer.wait_for("audio_start", deadline - time.time())
-            if event is None:
-                break
-            peer.events.remove(event)
-            session = event.get("audio_session") or session
-            print(json.dumps({"relay_session": session}), flush=True)
-            peer.send("audio_started", mode="relay", port=args.port, remote_tts=bool(event.get("remote_tts")))
-            stop = peer.wait_for("audio_stop", deadline - time.time())
-            if stop is not None:
-                peer.events.remove(stop)
+            wait = deadline - time.time()
+            if reconnect_at is not None:
+                wait = min(wait, max(0.0, reconnect_at - time.time()))
+            event = peer.wait_for("audio_start", wait)
+            if event is not None:
+                peer.events.remove(event)
+                session = event.get("audio_session") or session
+                print(json.dumps({"relay_session": session, "connection": id(peer) % 1000}), flush=True)
+                peer.send("audio_started", mode="relay", port=args.port, remote_tts=bool(event.get("remote_tts")))
+            if reconnect_at is not None and time.time() >= reconnect_at:
+                reconnect_at = None
+                # Leave the old socket open and silent (its client_left comes whenever the
+                # relay notices), and join again on a fresh one - like a Mac coming back.
+                stale = peer
+                print(json.dumps({"reconnecting": True}), flush=True)
+                peer = Peer(args.host, args.port, args.channel, args.encryption_key, args.role)
+                peer.connect()
+                if peer.wait_for("channel_joined", 15) is None:
+                    print("no channel_joined on reconnect", file=sys.stderr)
+                    sys.exit(2)
+                peer.send("remremote_os", os=args.os)
+                stale.sock.settimeout(None)
 
 
 if __name__ == "__main__":
