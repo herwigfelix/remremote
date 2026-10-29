@@ -65,27 +65,15 @@ stream, clipboard sync and the remote speech synthesizer option — lives in
 
 ## Audio engine
 
-The audio engine lives in [`audio/`](audio/): a Rust library that NVDA loads directly
-(`addon/globalPlugins/remoteClient/audioEngine/remremote_audio-x64.dll` and `-x86.dll`).
+The audio engine lives in its own repository,
+[remremote-audio](https://github.com/herwigfelix/remremote-audio): a Rust library that NVDA
+loads directly (`addon/globalPlugins/remoteClient/audioEngine/remremote_audio-x64.dll` and `-x86.dll`).
 It captures the system audio with the Windows process-loopback API, encodes it with Opus,
 seals it with AES-256-GCM and ships it over UDP in the RemSound wire format; the receiving
 end decodes into a small jitter buffer and plays it. The same engine speaks to the Mac app
 and to any RemSound-format peer, and it has no runtime dependencies. The compiled DLLs are
-committed, so building the add-on does not need a Rust toolchain; rebuilding them needs
-Rust, CMake and the Visual Studio build tools on Windows:
-
-```
-cd audio
-cargo build --release                                    # 64-bit
-cargo build --release --target i686-pc-windows-msvc      # 32-bit
-cargo test --release
-```
-
-`cargo test` exercises the wire format, the key derivation vectors shared with the Mac
-app, and complete sender/receiver sessions over the loopback interface. The
-`remremote-audio-cli` binary runs one end of a session from a shell (a test tone as the
-source, a raw dump as the sink) and prints the engine's events, which is how the relay
-path and the Windows capture are verified.
+committed here, so building the add-on does not need a Rust toolchain; how to rebuild
+and test them is described in the engine's repository.
 
 ## Building
 

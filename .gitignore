@@ -20,5 +20,3 @@ __pycache__/
 Thumbs.db
 desktop.ini
 
-# Rust build output of the audio engine
-audio/target/

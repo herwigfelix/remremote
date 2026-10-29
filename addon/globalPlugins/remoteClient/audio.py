@@ -5,8 +5,8 @@ computer, excluding NVDA's own audio on the slave (speech already travels over t
 control channel — hearing it twice would be useless).
 
 The heavy lifting happens in remremote's own audio engine, a Rust library loaded straight
-into NVDA (audioEngine/remremote_audio-*.dll, sources in the repository's audio/
-directory): WASAPI process-loopback capture, Opus, AES-256-GCM over UDP, in the RemSound
+into NVDA (audioEngine/remremote_audio-*.dll, sources in the separate remremote-audio
+repository): WASAPI process-loopback capture, Opus, AES-256-GCM over UDP, in the RemSound
 wire format the Mac app speaks too. No helper process and no runtime to install. This
 module only drives that library (a JSON config in, JSON events back on a callback) and
 runs the control-channel handshake:

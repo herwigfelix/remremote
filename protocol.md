@@ -264,7 +264,7 @@ These messages negotiate streaming the slave's system audio to the master. The a
 itself never travels over this channel: it flows over a separate UDP stream in the
 RemSound wire format (Opus frames, AES-256-GCM sealed with a key derived from the
 connection's encryption key, or the channel key when no encryption key is set), handled
-by remremote's audio engine (the Rust library in `audio/`, loaded into NVDA; the Mac app
+by remremote's audio engine (the Rust library in [remremote-audio](https://github.com/herwigfelix/remremote-audio), loaded into NVDA; the Mac app
 has its own implementation). The side that runs the control server binds
 the UDP audio port using the same port number as the TCP control server, so only one
 port ever needs forwarding. Peers that do not implement this extension simply ignore
