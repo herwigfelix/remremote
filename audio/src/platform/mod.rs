@@ -10,6 +10,8 @@ pub mod null;
 pub mod tone;
 #[cfg(windows)]
 pub mod windows;
+#[cfg(target_os = "macos")]
+pub mod macos;
 
 /// Which output device to play on (and, for a whole-device loopback capture, to capture):
 /// the system default, or the device NVDA is configured to use — by endpoint id (NVDA 2025.1+)
@@ -86,10 +88,14 @@ pub fn system_playout(device: DeviceSelection) -> Result<Box<dyn PlayoutSink>, S
     {
         Ok(Box::new(windows::WasapiPlayout::new(device)))
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        Ok(Box::new(macos::CoreAudioPlayout::new(device)))
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         let _ = device;
-        Err("system audio playout is only implemented on Windows".into())
+        Err("system audio playout is only implemented on Windows and macOS".into())
     }
 }
 
