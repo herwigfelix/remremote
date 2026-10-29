@@ -459,6 +459,56 @@
       "localizations": {
         "de": { "stringUnit": { "state": "translated", "value": "Sie steuern einen anderen Mac. VoiceOver auf diesem und auf dem entfernten Mac nutzen dieselben Tasten, was beim Senden von Tastendrücken zu Konflikten führen kann. Um das zu vermeiden, schalten Sie VoiceOver auf diesem Mac aus oder stellen Sie auf beiden Geräten unterschiedliche VoiceOver-Tasten ein (zum Beispiel Steuerung+Wahl auf dem einen und Feststelltaste auf dem anderen)." } }
       }
+    },
+    "Send file…": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Datei senden…" } }
+      }
+    },
+    "Choose the file you want to send to the remote computer": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Wählen Sie die Datei, die Sie an den entfernten Computer senden möchten" } }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Senden" } }
+      }
+    },
+    "The file could not be read.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Die Datei konnte nicht gelesen werden." } }
+      }
+    },
+    "This file is too large. Only files smaller than 10 MB are supported.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Diese Datei ist zu groß. Es werden nur Dateien unter 10 MB unterstützt." } }
+      }
+    },
+    "File sent": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Datei gesendet" } }
+      }
+    },
+    "Choose where to save the received file": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Wählen Sie, wo die empfangene Datei gespeichert werden soll" } }
+      }
+    },
+    "received file": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "empfangene Datei" } }
+      }
+    },
+    "The received file could not be saved.": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Die empfangene Datei konnte nicht gespeichert werden." } }
+      }
+    },
+    "File received": {
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Datei empfangen" } }
+      }
     }
   }
 }

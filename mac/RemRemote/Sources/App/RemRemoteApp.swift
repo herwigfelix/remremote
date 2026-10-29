@@ -20,6 +20,8 @@ struct RemRemoteApp: App {
                     .keyboardShortcut("k", modifiers: [.command, .shift])
                 Button(String(localized: "Push clipboard")) { state.pushClipboard() }
                     .keyboardShortcut("c", modifiers: [.command, .shift])
+                Button(String(localized: "Send file…")) { state.sendFile() }
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
                 Button(String(localized: "Toggle remote speech synthesizer")) { state.toggleRemoteTTS() }
                     .keyboardShortcut("s", modifiers: [.command, .shift])
                 Button(String(localized: "Disconnect")) { state.disconnect() }

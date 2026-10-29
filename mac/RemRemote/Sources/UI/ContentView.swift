@@ -241,7 +241,11 @@ struct SessionView: View {
 
             GroupBox(String(localized: "Session")) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(audioText)
+                    // Remote audio is a controlling-side feature; as the controlled machine
+                    // this Mac streams its own audio on request and has nothing to show.
+                    if !state.controlledMode {
+                        Text(audioText)
+                    }
                     Text(state.clipboardSyncEnabled
                         ? String(localized: "Clipboard sync: on")
                         : String(localized: "Clipboard sync: off"))
@@ -251,12 +255,15 @@ struct SessionView: View {
             }
 
             HStack {
-                Button(String(localized: "Toggle remote audio")) { state.toggleAudio() }
-                    .disabled(state.audioForced)
+                if !state.controlledMode {
+                    Button(String(localized: "Toggle remote audio")) { state.toggleAudio() }
+                        .disabled(state.audioForced)
+                }
                 Button(String(localized: "Toggle clipboard sync")) { state.toggleClipboardSync() }
                 Button(String(localized: "Push clipboard")) { state.pushClipboard() }
+                Button(String(localized: "Send file…")) { state.sendFile() }
             }
-            if state.audioForced {
+            if state.audioForced && !state.controlledMode {
                 Text("Audio is always on while controlling a Mac.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)

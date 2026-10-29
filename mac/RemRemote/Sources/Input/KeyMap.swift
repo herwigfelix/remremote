@@ -82,6 +82,22 @@ enum KeyMap {
         return nil
     }
 
+    /// True if shift, control, option or command is down in the given flags — i.e. the key
+    /// being pressed is part of a combination rather than a bare key press.
+    ///
+    /// fn is deliberately not counted: on Macs whose top row defaults to media keys, fn+F10
+    /// *is* how a plain F10 is typed. Caps lock and the numeric-pad bit say nothing about a
+    /// combination either. Both the device-independent masks and the left/right device bits
+    /// are checked, since events carry either depending on their origin.
+    static func hasCombinationModifiers(_ flags: CGEventFlags) -> Bool {
+        let independent = CGEventFlags.maskShift.rawValue
+            | CGEventFlags.maskControl.rawValue
+            | CGEventFlags.maskAlternate.rawValue
+            | CGEventFlags.maskCommand.rawValue
+        let deviceBits = deviceFlagMasks.values.reduce(UInt64(0)) { $0 | $1 }
+        return (flags.rawValue & (independent | deviceBits)) != 0
+    }
+
     /// kVK code -> Windows key.
     static let table: [Int64: WindowsKey] = {
         var map: [Int64: WindowsKey] = [:]

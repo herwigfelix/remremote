@@ -46,6 +46,7 @@ final class AppState: ObservableObject {
     private var speechOutput: SpeechOutput
     private let audio = AudioStreamController()
     private let clipboard = ClipboardSyncController()
+    private let fileTransfer = FileTransferController()
     private var cancellables: Set<AnyCancellable> = []
 
     init() {
@@ -67,6 +68,16 @@ final class AppState: ObservableObject {
         }
         clipboard.playReceivedCue = { [weak self] in
             self?.cues.play(.clipboardReceived)
+        }
+        fileTransfer.announce = { [weak self] text in
+            DispatchQueue.main.async { self?.announce(text) }
+        }
+        fileTransfer.playSentCue = { [weak self] in self?.cues.play(.clipboardPushed) }
+        fileTransfer.playReceivedCue = { [weak self] in self?.cues.play(.clipboardReceived) }
+        // An open/save panel needs the keyboard back on this Mac, so stop forwarding first.
+        fileTransfer.prepareForPanel = { [weak self] in
+            guard let self, self.controlling else { return }
+            self.setControlling(false)
         }
         keyCapture.onToggleKey = { [weak self] in
             guard let self else { return false }
@@ -122,6 +133,7 @@ final class AppState: ObservableObject {
         registerMessageHandlers(on: session)
         audio.attach(to: session)
         clipboard.attach(to: session)
+        fileTransfer.attach(to: session)
         session.onEvent = { [weak self] event in
             self?.handleSessionEvent(event)
         }
@@ -148,6 +160,11 @@ final class AppState: ObservableObject {
         )
         let slave = SlaveController(configuration: configuration)
         self.slave = slave
+        // Clipboard and file transfer belong to this Mac in either role, so they hang off
+        // the slave's session too — otherwise the buttons and menu items would do nothing
+        // while this Mac is the controlled one.
+        clipboard.attach(to: slave.session)
+        fileTransfer.attach(to: slave.session)
         slave.onState = { [weak self] slaveState in
             DispatchQueue.main.async { self?.applySlaveState(slaveState) }
         }
@@ -160,10 +177,13 @@ final class AppState: ObservableObject {
 
     private func applySlaveState(_ slaveState: SlaveController.State) {
         switch slaveState {
-        case .connecting: status = .connecting
+        case .connecting:
+            status = .connecting
+            clipboard.reset()
         case .waitingForController:
             if status == .connected { cues.play(.disconnected) }
             status = .connectedWaitingForSlave
+            clipboard.reset()
         case .controlled:
             status = .connected
             cues.play(.controlled)
@@ -172,6 +192,8 @@ final class AppState: ObservableObject {
 
     func disconnect() {
         if let slave {
+            clipboard.shutdown()
+            fileTransfer.shutdown()
             slave.disconnect()
             self.slave = nil
             controlledMode = false
@@ -189,6 +211,7 @@ final class AppState: ObservableObject {
         setControlling(false)
         audio.shutdown()
         clipboard.shutdown()
+        fileTransfer.shutdown()
         keyCapture.stop()
         session.close()
         self.session = nil
@@ -269,6 +292,9 @@ final class AppState: ObservableObject {
             setControlling(false)
             audio.setForced(false)
             audio.shutdown()
+            // The add-on drops clipboard sync when its transport goes; match it, so the two
+            // sides do not disagree about the toggle once the link comes back.
+            clipboard.reset()
             keyCapture.stop()
             remoteIsMac = false
             if status == .connected || status == .connectedWaitingForSlave {
@@ -288,6 +314,7 @@ final class AppState: ObservableObject {
         case .peerLeft:
             setControlling(false)
             audio.setForced(false)
+            clipboard.reset()
             remoteIsMac = false
             status = .connectedWaitingForSlave
             cues.play(.disconnected)
@@ -364,4 +391,5 @@ final class AppState: ObservableObject {
         clipboard.pushClipboard()
         cues.play(.clipboardPushed)
     }
+    func sendFile() { fileTransfer.sendFile() }
 }

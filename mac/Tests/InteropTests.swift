@@ -326,6 +326,27 @@ final class InteropTests: XCTestCase {
         XCTAssertEqual(vk("-"), 0xBD)
     }
 
+    /// Only a *bare* F10 toggles control: shift+F10 (and every other modified F10) must
+    /// stay an ordinary combination and travel to the controlled computer.
+    func testCombinationModifierDetection() {
+        // No modifiers at all — a bare F10.
+        XCTAssertFalse(KeyMap.hasCombinationModifiers(CGEventFlags(rawValue: 0)))
+        // fn and caps lock do not make a combination: fn+F10 *is* F10 on many Macs.
+        XCTAssertFalse(KeyMap.hasCombinationModifiers(.maskSecondaryFn))
+        XCTAssertFalse(KeyMap.hasCombinationModifiers(.maskAlphaShift))
+        XCTAssertFalse(KeyMap.hasCombinationModifiers(.maskNumericPad))
+        // Shift, control, option and command do — with either the device-independent mask
+        // or the left/right device bit alone.
+        XCTAssertTrue(KeyMap.hasCombinationModifiers(.maskShift))
+        XCTAssertTrue(KeyMap.hasCombinationModifiers(CGEventFlags(rawValue: 0x0000_0002))) // left shift bit
+        XCTAssertTrue(KeyMap.hasCombinationModifiers(CGEventFlags(rawValue: 0x0000_0004))) // right shift bit
+        XCTAssertTrue(KeyMap.hasCombinationModifiers(.maskControl))
+        XCTAssertTrue(KeyMap.hasCombinationModifiers(.maskAlternate))
+        XCTAssertTrue(KeyMap.hasCombinationModifiers(.maskCommand))
+        // A real shift+F10 event carries both, plus the fn bit on a media-key keyboard.
+        XCTAssertTrue(KeyMap.hasCombinationModifiers(CGEventFlags(rawValue: 0x0002_0002 | 0x0080_0000)))
+    }
+
     func testCharacterKeyCodesCoverLettersNotNavigation() {
         XCTAssertTrue(KeyMap.characterKeyCodes.contains(6))  // Z key
         XCTAssertTrue(KeyMap.characterKeyCodes.contains(16)) // Y-position key

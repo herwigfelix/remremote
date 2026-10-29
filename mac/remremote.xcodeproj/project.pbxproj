@@ -51,6 +51,7 @@
 		DDDD60A7465F05545CC691F5 /* controlled.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7A149CC2532C3C0DABA60E09 /* controlled.wav */; };
 		E1DE4E025F7D28EC47B63A6D /* Push_Clipboard.wav in Resources */ = {isa = PBXBuildFile; fileRef = 06D3F28C2D57448EF6C313F6 /* Push_Clipboard.wav */; };
 		EC50A291845A339E31A42406 /* connected.wav in Resources */ = {isa = PBXBuildFile; fileRef = CD4CA0EDEC3DD4434CC49C3F /* connected.wav */; };
+		ECA6C1EA431FEB1B74CB19C0 /* FileTransferController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4226157671AE97F084114B8C /* FileTransferController.swift */; };
 		F8DF7307029EE226155663A6 /* VoiceOverSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8F91833FF2D56F112B6219 /* VoiceOverSpeech.swift */; };
 /* End PBXBuildFile section */
 
@@ -79,6 +80,7 @@
 		3936650D5E1BF2AD1E0605EC /* remremote.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = remremote.entitlements; sourceTree = "<group>"; };
 		3ED161C923134E541241FE70 /* SavedComputers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedComputers.swift; sourceTree = "<group>"; };
 		4222BCF97858F761006DA5F7 /* KeyMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyMap.swift; sourceTree = "<group>"; };
+		4226157671AE97F084114B8C /* FileTransferController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTransferController.swift; sourceTree = "<group>"; };
 		45CD27D9F7B5E9AF7D9CC819 /* disconnected.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = disconnected.wav; sourceTree = "<group>"; };
 		5EE3512BBB525103054EA2F7 /* RemPacket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemPacket.swift; sourceTree = "<group>"; };
 		5FA31CC390AE79461F053F9A /* RemoteSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSession.swift; sourceTree = "<group>"; };
@@ -225,6 +227,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		90AA4EEFFF40F19F155F6592 /* FileTransfer */ = {
+			isa = PBXGroup;
+			children = (
+				4226157671AE97F084114B8C /* FileTransferController.swift */,
+			);
+			path = FileTransfer;
+			sourceTree = "<group>";
+		};
 		99EECE9C1891B914EC1E7731 /* Protocol */ = {
 			isa = PBXGroup;
 			children = (
@@ -241,6 +251,7 @@
 				0F96ADC0A405C3C457C7E705 /* App */,
 				1FA9730C76AAA4B8927E6D32 /* Audio */,
 				F32226EA5A832D916BD2570D /* Clipboard */,
+				90AA4EEFFF40F19F155F6592 /* FileTransfer */,
 				761EDFEDAEB2E082E6B6E225 /* Input */,
 				99EECE9C1891B914EC1E7731 /* Protocol */,
 				65E13B431F064610F34C6BD9 /* Speech */,
@@ -419,6 +430,7 @@
 				5A6B673BD22502EF08E44210 /* ControlTransport.swift in Sources */,
 				C607CCCD1DE99D945EAD1D1E /* CuePlayer.swift in Sources */,
 				2F2B0D4BC9A866048E71AE1B /* DirectTTSSpeech.swift in Sources */,
+				ECA6C1EA431FEB1B74CB19C0 /* FileTransferController.swift in Sources */,
 				8FDDEBFF4A7D35FA257DA684 /* KeyCapture.swift in Sources */,
 				C5C3AB8D46FDB4ABEBE6C493 /* KeyInjector.swift in Sources */,
 				281F185E65D023BA6C4017D5 /* KeyMap.swift in Sources */,
@@ -473,7 +485,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = XJ3N4HV6L6;
 				ENABLE_APP_SANDBOX = NO;
@@ -488,7 +500,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.remremote.mac;
 				PRODUCT_NAME = remremote;
 				SDKROOT = macosx;
@@ -612,7 +624,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = XJ3N4HV6L6;
 				ENABLE_APP_SANDBOX = NO;
@@ -627,7 +639,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = org.remremote.mac;
 				PRODUCT_NAME = remremote;

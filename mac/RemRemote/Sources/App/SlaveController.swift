@@ -4,6 +4,9 @@ import Foundation
 /// and injects them, and streams its system audio (the only way its VoiceOver output can
 /// reach the controller). Relay-only: it connects to the relay like a master would, joins
 /// as "slave", and meets the controller at the relay's UDP audio port.
+///
+/// Clipboard sync and file transfer are not here: they belong to this Mac in either role,
+/// so AppState owns them and hangs them off `session`.
 @MainActor
 final class SlaveController {
     enum State: Equatable {
@@ -17,13 +20,11 @@ final class SlaveController {
     var onError: ((String) -> Void)?
 
     private let keyInjector = KeyInjector()
-    private let clipboard = ClipboardSyncController()
     private var audioSender: (any AudioSending)?
 
     init(configuration: SessionConfiguration) {
         session = RemoteSession(configuration: configuration, connectionType: "slave")
         registerHandlers()
-        clipboard.attach(to: session)
         session.onEvent = { [weak self] event in self?.handle(event) }
     }
 
@@ -34,7 +35,6 @@ final class SlaveController {
     func disconnect() {
         session.onEvent = nil
         stopAudio()
-        clipboard.shutdown()
         keyInjector.releaseAll()
         session.close()
     }

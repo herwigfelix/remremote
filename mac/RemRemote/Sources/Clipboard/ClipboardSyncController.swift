@@ -39,16 +39,29 @@ final class ClipboardSyncController {
         }
         // The classic one-shot "push clipboard" of NVDA Remote.
         session.register("set_clipboard_text") { [weak self] message in
-            guard let text = message["text"] as? String else { return }
+            guard let self, let text = message["text"] as? String else { return }
+            // Remember it as ours: with sync on, the poller would otherwise see this write
+            // as a fresh local copy and bounce it straight back to the sender.
+            self.lastText = text
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
-            self?.lastChangeCount = NSPasteboard.general.changeCount
-            self?.playReceivedCue?()
-            self?.announce?(String(localized: "Clipboard updated"))
+            self.lastChangeCount = NSPasteboard.general.changeCount
+            self.playReceivedCue?()
+            self.announce?(String(localized: "Clipboard updated"))
         }
     }
 
     func shutdown() {
+        stopPolling()
+        enabled = false
+        lastText = nil
+        session = nil
+    }
+
+    /// Turn sync off locally without telling the peer — for a dropped link or a peer that
+    /// left. The other side resets its own state the same way, so the two never disagree
+    /// about the toggle after a reconnect.
+    func reset() {
         stopPolling()
         enabled = false
         lastText = nil

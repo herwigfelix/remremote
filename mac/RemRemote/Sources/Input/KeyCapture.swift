@@ -3,9 +3,11 @@ import CoreGraphics
 
 /// Captures the keyboard with a CGEvent tap while a session is connected.
 ///
-/// F10 (or fn+F10, depending on the Mac's function-key setting — whatever produces a
-/// real F10 key event) toggles control. While controlling, every key event is swallowed
-/// locally and forwarded to the controlled computer as a Windows key message.
+/// A bare F10 (or fn+F10, depending on the Mac's function-key setting — whatever produces
+/// a real F10 key event) toggles control. F10 *with* a modifier is not a toggle: shift+F10
+/// and friends are ordinary combinations and travel to the controlled computer like any
+/// other key. While controlling, every key event is swallowed locally and forwarded to the
+/// controlled computer as a Windows key message.
 ///
 /// The NVDA key: most Mac keyboards have no Insert. When the corresponding setting is
 /// on (default), holding Command and Option together sends Insert down until one of the
@@ -33,6 +35,8 @@ final class KeyCapture {
     /// Fires when a lone Command/Option has waited out the grace window and should commit
     /// to being its ordinary Windows/Alt key.
     private var commitTimer: DispatchSourceTimer?
+    /// True between the F10 key-down we consumed as a control toggle and its key-up.
+    private var toggleKeyHeld = false
 
     private func emit(_ actions: [ChordProcessor.Action]) {
         for action in actions {
@@ -99,6 +103,7 @@ final class KeyCapture {
 
     func stop() {
         setForwarding(false)
+        toggleKeyHeld = false
         if let source = runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
             runLoopSource = nil
@@ -143,15 +148,24 @@ final class KeyCapture {
         let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
 
         if keyCode == KeyMap.f10KeyCode {
-            if pressed && !isRepeat {
+            // Repeats and the key-up of a press we consumed as a toggle are swallowed, so
+            // neither macOS nor the remote machine ever sees half an F10 event. A fresh
+            // key-down always starts over, so a key-up lost while the tap was off cannot
+            // leave the toggle stuck.
+            if toggleKeyHeld, !pressed || isRepeat {
+                toggleKeyHeld = pressed
+                return nil
+            }
+            // Only a *bare* F10 toggles control. F10 with shift, control, option or command
+            // is an ordinary combination (shift+F10 is the context menu) and falls through
+            // to be forwarded or passed on like any other key.
+            if pressed, !isRepeat, !KeyMap.hasCombinationModifiers(event.flags) {
                 if onToggleKey?() == true {
+                    toggleKeyHeld = true
                     return nil
                 }
                 return Unmanaged.passUnretained(event)
             }
-            // Swallow F10 repeats/key-up while we are (or just were) in control, so a
-            // toggle never leaks half an event to macOS.
-            return forwarding ? nil : Unmanaged.passUnretained(event)
         }
 
         guard forwarding else { return Unmanaged.passUnretained(event) }
